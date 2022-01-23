@@ -1,0 +1,80 @@
+## This card includes all base configurations for the tool
+## Please do not modify the content here but instead rewrite the item in the calibration config cards
+
+##############################
+## Configuration on modules ##
+##############################
+
+# overall configuration
+use_helvetica: auto  # use the Helvetica font in mplhep, works when Helvetica exists in your local system. Support true, false, auto
+
+# 2_coastline
+reuse_mc_weight_from_routine: null  # if specified, reuse the MC reweight factors from a previous routine. String format same to dirname: {routine_name}_{year}
+
+# 3_tmpl_writer options
+skip_tmpl_writing: false  # if true, skip the template writing (used for Higgs Combine) during postprocessing
+skip_inclusive_plot_writing: false  # if true, skip writing the inclusive plots for visualization on webpage
+
+# 4_fit options part A (control overall fit options before entering concurrent fit)
+test_n_fit: -1  # if specify positive number, will only run test_n_fit fits for test
+do_main_fit: true # when true, run the main fit points over all coastline grids, pT, and WPs
+do_sfbdt_rwgt_fit: true # similar for running fit points in sfbdt_rwgt scheme over all coastline grids, pT, and WPs
+do_fit_var_rwgt_fit: true # similar for running fit points in fit_var_rwgt scheme over all coastline grids, pT, and WPs
+run_central_fit_only: false  # if true, only run the central sfBDT fit for each pT and tagger WP
+
+# 4_fit options part B (for fit details in each single fit job)
+skip_fit: false  # if true, skip the fit and directly go to plot making with existing results
+run_impact_for_central_fit: true  # when true, also run impact and uncertainty break down for the central fit, which can be more time costly
+
+# 4_fit options part C (for visualizing fit results)
+show_fitvarrwgt_unce: false  # if true, include the fit var reweighting uncertianty in the fit result and put corresponding on web
+show_fit_number_only: false  # if true, only show the fit number on webpage
+show_unce_breakdown: true  # if true, make the uncertainty breakdown plots on web
+show_sfbdt_variation: true # if true, draw and show the sfBDT variation plots
+show_sfbdt_variation_norun: false # if true, only show the sfBDT variation plots without running the plots again
+show_sfbdt_variation_all_flavour: false  # if true, show all flavour plots for sfBDT variation
+
+
+#######################
+## Predefined values ##
+#######################
+
+lumi_dict: {2016: 35.92, 2017: 41.53, 2018: 59.74}
+
+# used HLT_PFHT* branches depend on year
+hlt_branches: 
+  2016: [HLT_PFHT125, HLT_PFHT200, HLT_PFHT250, HLT_PFHT300, HLT_PFHT350, HLT_PFHT400, HLT_PFHT475, HLT_PFHT600, HLT_PFHT650, HLT_PFHT800, HLT_PFHT900]
+  2017: [HLT_PFHT180, HLT_PFHT250, HLT_PFHT370, HLT_PFHT430, HLT_PFHT510, HLT_PFHT590, HLT_PFHT680, HLT_PFHT780, HLT_PFHT890, HLT_PFHT1050, HLT_PFHT350]
+  2018: [HLT_PFHT180, HLT_PFHT250, HLT_PFHT370, HLT_PFHT430, HLT_PFHT510, HLT_PFHT590, HLT_PFHT680, HLT_PFHT780, HLT_PFHT890, HLT_PFHT1050, HLT_PFHT350]
+
+# fine pt bins for reweighting
+rwgt_pt_bins: [[200, 250],[250, 300], [350, 400], [400, 450], [450, 500], [500, 550], [550, 600], [600, 700], [700, 800], [800, 100000]]
+
+# uncertainty list to run
+unce_list: [pu, fracBB, fracCC, fracLight, psWeightIsr, psWeightFsr, sfBDTRwgt, fitVarRwgt]
+
+# mapping the tagger name in NanoAOD and NanoHRT tuples
+tagger_name_replace_map:
+  FatJet_particleNetMD_Xbb: fj_x_ParticleNetMD_Xbb
+  FatJet_particleNetMD_Xcc: fj_x_ParticleNetMD_Xcc
+  FatJet_particleNetMD_Xqq: fj_x_ParticleNetMD_Xqq
+  FatJet_particleNetMD_QCD: fj_x_ParticleNetMD_QCD
+  FatJet_particleNetMD_XbbVsQCD: fj_x_ParticleNetMD_XbbVsQCD
+  FatJet_particleNetMD_XccVsQCD: fj_x_ParticleNetMD_XccVsQCD
+  FatJet_particleNetMD_XccOrXqqVsQCD: fj_x_ParticleNetMD_XccOrXqqVsQCD
+  FatJet_deepTagMD_ZHbbvsQCD: fj_x_DeepAK8MD_ZHbbvsQCD
+  FatJet_deepTagMD_ZHccvsQCD: fj_x_DeepAK8MD_ZHccvsQCD
+  FatJet_deepTagMD_bbVsLight: fj_x_DeepAK8MD_bbVsLight
+  FatJet_btagDDBvLV2: fj_x_btagDDBvLV2
+  FatJet_btagDDCvBV2: fj_x_btagDDCvBV2
+  FatJet_btagDDCvLV2: fj_x_btagDDCvLV2
+  FatJet_btagDeepB: fj_x_btagDeepB
+  FatJet_btagHbb: fj_x_btagHbb
+
+# default working point name mapping
+default_wp_name_map:
+  HP: High Purity
+  MP: Medium Purity
+  LP: Low Purity
+
+
