@@ -2,6 +2,7 @@
 CMSSW_*
 output/
 web/
+custom_cards/
 .vscode/
 .test*
 
