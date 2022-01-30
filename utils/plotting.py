@@ -183,12 +183,14 @@ def make_generic_mc_data_plots(
         labels_mc: list of MC label strings (from bottom to top)
         colors_mc: list of MC color indices (from bottom to top)
     """
+    use_helvetica = kwargs.get('use_helvetica', False)
+    plot_args = kwargs.get('plot_args', {})
+
     def set_sns_color(*args):
         sns.palplot(sns.color_palette(*args))
         sns.set_palette(*args)
 
     set_sns_color(colors_mc)
-    use_helvetica = kwargs.get('use_helvetica', False)
     if use_helvetica == True or (use_helvetica == 'auto' and any(['Helvetica' in font for font in mpl.font_manager.findSystemFonts()])):
         plt.style.use({"font.sans-serif": 'Helvetica'})
 
@@ -212,7 +214,11 @@ def make_generic_mc_data_plots(
     hep.histplot(values_data, yerr=(yerrlo_data, yerrhi_data), 
                  bins=edges, label='Data', histtype='errorbar', color='k', markersize=15, elinewidth=1.5
                  )
-    ax.set_ylim(0, 1.8*max(values_data))
+    if 'ylog' in plot_args and plot_args['ylog']:
+        ax.set_yscale('log')
+        ax.set_ylim(top=60*ax.get_ylim()[1])
+    else:
+        ax.set_ylim(0, 1.8*max(values_data))
     ax.legend()
 
     ## Ratio panel
@@ -332,7 +338,7 @@ def make_fit_summary_plots(center, errl, errh, outputdir, args, plot_xticklabels
 
     # Add some text for labels, title and custom x-axis tick labels, etc.
     ax.set_xlabel(r'$p_{T}$(j) [GeV]', ha='right', x=1.0); ax.set_ylabel(plot_ylabel, ha='right', y=1.0)
-    ax.set_xlim(-0.5, len(plot_xticklabels)-0.5); ax.set_ylim(0.5, 1.5)
+    ax.set_xlim(-0.5, len(plot_xticklabels)-0.5); ax.set_ylim(0., 1.6)
     ax.set_xticks(x_ticks); ax.set_xticklabels(plot_xticklabels); ax.tick_params(axis='both', which='minor', bottom=False, top=False)
     ax.text(0.05, 0.92, plot_text, transform=ax.transAxes, fontweight='bold') 
     ax.legend(loc='lower left')

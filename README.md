@@ -5,12 +5,23 @@ The tool runs under the Run 2 UL condition using NanoAODv9.
 It is designed for the calibration of any Xbb/Xcc type taggers composed of the branches in NanoAODv9. 
 
 Users should specify in a data card the tagger expression, pre-defined WPs, etc., and a signal ROOT tree for extraction of the necessary signal tagger shape.
-See details in the [example data card]().
+See details in the [example data card](cards/config_bb_PNetXbbVsQCD.yml) for calibrating the ParticleNet XbbVsQCD score.
 
 The introduction of the method can be found in [these slides](TBA).
 Detailed documentation is provided in [AN-21-005](https://cms.cern.ch/iCMS/jsp/db_notes/noteInfo.jsp?cmsnoteid=CMS%20AN-2021/005).
 
+## Run the tool
+
+Run the tool in the command line (see details in `launcher.py`), e.g.,
+```python
+python launcher.py cards/config_bb_PNetXbbVsQCD.yml
+```
+or in a notebook `launcher.ipynb`.
+
 ## Update notes
+
+v3.0.1 Jan 29 2022
+ - Support more command line arguments
 
 v3.0.0 Jan 24 2022
  - Update the method to sfBDT coastline

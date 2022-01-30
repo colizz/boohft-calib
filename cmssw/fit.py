@@ -24,7 +24,7 @@ args = parser.parse_args()
 
 if args.type == 'bb':
     flv_poi1, flv_poi2 = 'flvB', 'flvC'
-elif args.type == 'bb':
+elif args.type == 'cc':
     flv_poi1, flv_poi2 = 'flvC', 'flvB'
 
 if not os.path.exists(args.workdir):

@@ -1,11 +1,15 @@
 ## This card includes all base configurations for the tool
 ## Please do not modify the content here but instead rewrite the item in the calibration config cards
 
+version: v3.0.1
+
 ##############################
 ## Configuration on modules ##
 ##############################
 
 # overall configuration
+workers: [8, 8, 8, 8]  # number of concurrent workers for the coffea and standalone processor
+run_step: 1111  # four bool digits to control whether or not to run each of the four steps
 use_helvetica: auto  # use the Helvetica font in mplhep, works when Helvetica exists in your local system. Support true, false, auto
 
 # 2_coastline
@@ -39,13 +43,19 @@ show_sfbdt_variation_all_flavour: false  # if true, show all flavour plots for s
 ## Predefined values ##
 #######################
 
-lumi_dict: {2016: 35.92, 2017: 41.53, 2018: 59.74}
+lumi_dict: {"2016": 35.92, "2017": 41.53, "2018": 59.74}
+
+fileset_template:
+  qcd-mg:  mc/qcd-mg_tree.root
+  top:     mc/top_tree.root
+  v-qq:    mc/v-qq_tree.root
+  jetht:   data/jetht_tree.root
 
 # used HLT_PFHT* branches depend on year
 hlt_branches: 
-  2016: [HLT_PFHT125, HLT_PFHT200, HLT_PFHT250, HLT_PFHT300, HLT_PFHT350, HLT_PFHT400, HLT_PFHT475, HLT_PFHT600, HLT_PFHT650, HLT_PFHT800, HLT_PFHT900]
-  2017: [HLT_PFHT180, HLT_PFHT250, HLT_PFHT370, HLT_PFHT430, HLT_PFHT510, HLT_PFHT590, HLT_PFHT680, HLT_PFHT780, HLT_PFHT890, HLT_PFHT1050, HLT_PFHT350]
-  2018: [HLT_PFHT180, HLT_PFHT250, HLT_PFHT370, HLT_PFHT430, HLT_PFHT510, HLT_PFHT590, HLT_PFHT680, HLT_PFHT780, HLT_PFHT890, HLT_PFHT1050, HLT_PFHT350]
+  "2016": [HLT_PFHT125, HLT_PFHT200, HLT_PFHT250, HLT_PFHT300, HLT_PFHT350, HLT_PFHT400, HLT_PFHT475, HLT_PFHT600, HLT_PFHT650, HLT_PFHT800, HLT_PFHT900]
+  "2017": [HLT_PFHT180, HLT_PFHT250, HLT_PFHT370, HLT_PFHT430, HLT_PFHT510, HLT_PFHT590, HLT_PFHT680, HLT_PFHT780, HLT_PFHT890, HLT_PFHT1050, HLT_PFHT350]
+  "2018": [HLT_PFHT180, HLT_PFHT250, HLT_PFHT370, HLT_PFHT430, HLT_PFHT510, HLT_PFHT590, HLT_PFHT680, HLT_PFHT780, HLT_PFHT890, HLT_PFHT1050, HLT_PFHT350]
 
 # fine pt bins for reweighting
 rwgt_pt_bins: [[200, 250],[250, 300], [350, 400], [400, 450], [450, 500], [500, 550], [550, 600], [600, 700], [700, 800], [800, 100000]]
@@ -76,5 +86,3 @@ default_wp_name_map:
   HP: High Purity
   MP: Medium Purity
   LP: Low Purity
-
-

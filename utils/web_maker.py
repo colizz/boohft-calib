@@ -50,16 +50,10 @@ class WebMaker(object):
             self.text.append(f'<object data="{src}" type="application/pdf" width="{width}px" height="{height}px"></object>')
 
     def add_textarea(self, text, width=400, height=400):
-        self.text.append(f'<textarea name="a" style="width:{width}px;height:{height}px;">{text}</textarea>')
-
-
-    def end_this_md_block(self):
+        # should first end the current zero-md block to add textarea blocks (otherwise text is interpreted by MD syntax)
         self.text.append('</xmp>\n    </template>\n</zero-md>')
-
-
-    def begin_new_md_block(self):
+        self.text.append(f'<textarea name="a" style="width:{width}px;height:{height}px;">{text}</textarea>')
         self.text.append('<zero-md>\n    <template>\n<xmp>')
-
 
     def write_to_file(self, dst, filename='index.html'):
         if not os.path.exists(dst):

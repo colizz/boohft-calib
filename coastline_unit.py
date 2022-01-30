@@ -28,7 +28,7 @@ import os
 
 from unit import ProcessingUnit
 from utils.web_maker import WebMaker
-from utils.tools import lookup_mc_weight, lookup_pt_based_weight, parse_tagger_expr
+from utils.tools import lookup_pt_based_weight, parse_tagger_expr
 from utils.fast_splines import interp2d
 from logger import _logger
 
@@ -44,7 +44,6 @@ class CoastlineCoffeaProcessor(processor.ProcessorABC):
         self.pt_reweight_edges = [edge[0] for edge in global_cfg.rwgt_pt_bins]
 
         self.tagger_expr = parse_tagger_expr(global_cfg.tagger_name_replace_map, global_cfg.tagger.expr)
-        # self.lookup_mc_weight = partial(lookup_mc_weight, weight_map)
         self.lookup_mc_weight = partial(lookup_pt_based_weight, self.weight_map, self.pt_reweight_edges, jet_var_maxlimit=2500)
 
         dataset = hist.Cat("dataset", "dataset")
@@ -243,10 +242,10 @@ class CoastlineUnit(ProcessingUnit):
         bh2d_pts = self.result['h2d_grid'].integrate('dataset').to_boost()
         for ipt in range(1, len(self.global_cfg.pt_edges) + 1):
             arr2d = bh2d_pts.view(flow=True).value[ipt][1:-1, 1:-1].T # (dim_tagger, dim_sfbdt)
-            arr2d = arr2d / np.sum(arr2d)
+            arr2d_norm = arr2d / np.sum(arr2d)
 
             # accumulate 2D hist on the y-axis (sfBDT)
-            arr2d_cum = np.cumsum(arr2d[:, ::-1], axis=1)[:, ::-1]
+            arr2d_cum = np.cumsum(arr2d_norm[:, ::-1], axis=1)[:, ::-1]
 
             # extend the y-limit on sfBDT a bit to rescue from the gaussian filter
             step = 1./ self.nbin2d
@@ -258,6 +257,7 @@ class CoastlineUnit(ProcessingUnit):
             arr2d_cum_expend = np.zeros((arr2d_cum.shape[0], arr2d_cum.shape[1] + nstep_extend))
             arr2d_cum_expend[:, :-nstep_extend] = arr2d_cum
             arr2d_cum_smeared = scipy.ndimage.gaussian_filter(arr2d_cum_expend, sigma=5)[:, :-nstep_extend]
+            arr2d_cum_smeared[:, -1] = 0.
 
             # define end point for the contour
             level_en = arr2d_cum_smeared[int(0.6 * len(x)), 0]  # at point (0.6, 0)
@@ -268,7 +268,7 @@ class CoastlineUnit(ProcessingUnit):
             # fast-spline the 2d smeared hist
             fspline = interp2d(x, y, arr2d_cum_smeared)
 
-            self.coastline_map.append({'array': arr2d_cum_smeared, 'fspline': fspline, 'levels': levels})
+            self.coastline_map.append({'arr2d': arr2d, 'arr2d_cum_smeared': arr2d_cum_smeared, 'fspline': fspline, 'levels': levels})
         
         with open(os.path.join(self.outputdir, 'coastline_map.pickle'), 'wb') as fw:
             pickle.dump(self.coastline_map, fw)
@@ -364,7 +364,7 @@ class CoastlineUnit(ProcessingUnit):
         for i, (ptmin, ptmax) in enumerate(zip(pt_edges[:-1], pt_edges[1:])):
             f, ax = plt.subplots(figsize=(10, 10))
             hep.cms.label(data=True, llabel='Preliminary', year=year, ax=ax, rlabel=r'%s $fb^{-1}$ (13 TeV)' % lumi, fontname='sans-serif')
-            im = ax.imshow(self.coastline_map[i]['array'][:, ::-1].T, norm=mpl.colors.LogNorm(), interpolation='nearest', extent=[0, 1, 0, 1], cmap=plt.cm.jet)
+            im = ax.imshow(self.coastline_map[i]['arr2d'][:, ::-1].T, norm=mpl.colors.LogNorm(), interpolation='nearest', extent=[0, 1, 0, 1], cmap=plt.cm.jet)
             f.colorbar(im, ax=ax)
             ax.set_xlabel('Transformed tagger'); ax.set_ylabel('sfBDT')
 
@@ -383,7 +383,7 @@ class CoastlineUnit(ProcessingUnit):
             step = 1./ self.nbin2d
             x = y = np.arange(step/2, 1. + step/2, step) ## 200 bins correspond to the hist
             Y, X = np.meshgrid(y, x)
-            CS = ax.contour(X, Y, self.coastline_map[i]['array'], levels=self.coastline_map[i]['levels'])
+            CS = ax.contour(X, Y, self.coastline_map[i]['arr2d_cum_smeared'], levels=self.coastline_map[i]['levels'])
             ax.clabel(CS, inline=0, fontsize=10)
             ax.set_xlabel('Transformed tagger'); ax.set_ylabel('sfBDT')
 

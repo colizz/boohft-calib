@@ -141,13 +141,13 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
                 )
                 weight['puUp'] = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeightUp*{lumi}', events_fj) * mc_weight
                 weight['puDown'] = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeightDown*{lumi}', events_fj) * mc_weight
-                if len(events_fj.PSWeight[0]) == 4:
+                if 'PSWeight' in events_fj and len(events_fj.PSWeight[0]) == 4:
                     weight['psWeightIsrUp'] = weight['nominal'] * events_fj.PSWeight[:,2]
                     weight['psWeightIsrDown'] = weight['nominal'] * events_fj.PSWeight[:,0]
                     weight['psWeightFsrUp'] = weight['nominal'] * events_fj.PSWeight[:,3]
                     weight['psWeightFsrDown'] = weight['nominal'] * events_fj.PSWeight[:,1]
                 else:
-                    weight['psWeightIsrUp'] = weight['psWeightIsrDown'] = weight['psWeightFsrUp'] = weight['psWeightFsrDown'] = weight['nominal'] * events_fj.PSWeight[:,0]
+                    weight['psWeightIsrUp'] = weight['psWeightIsrDown'] = weight['psWeightFsrUp'] = weight['psWeightFsrDown'] = weight['nominal']
                 weight['sfBDTRwgtUp'] = weight['nominal'] * sfbdt_weight
 
             else: # fill weight=1 to data
@@ -333,7 +333,8 @@ class TmplWriterUnit(ProcessingUnit):
                     )
                     h = self.result[f'hinc_{var}_pt{ptmin}to{ptmax}'].to_boost()
                     nbdt = len(self.coastline_map[ipt]['levels'])
-                    plotter_handler.book((args, self.webdir, h, (var, xlabel), (ptmin, ptmax), nbdt,))
+                    plot_args = {'ylog': True} if var == 'xtagger' else {}
+                    plotter_handler.book((args, self.webdir, h, (var, xlabel), (ptmin, ptmax), nbdt, plot_args))
             
             plotter_handler.run(concurrent_inclusive_plot_writing_unit) # plots are stored in each concurrent task
 
@@ -426,7 +427,7 @@ def concurrent_tmpl_writing_unit(arg):
 def concurrent_inclusive_plot_writing_unit(arg):
     r"""Unit concurrent task to make inclusive plots based on the coffea result histogram.
     """
-    args, webdir, h, (var, xlabel), (ptmin, ptmax), nbdt = arg
+    args, webdir, h, (var, xlabel), (ptmin, ptmax), nbdt, plot_args = arg
     bdt_indices = [bh.underflow] + list(range(nbdt - 1)) + [bh.overflow]
     edges = h.axes[-1].edges
     for ibdt in range(nbdt + 1): # different tightness of coastline selection
@@ -447,11 +448,12 @@ def concurrent_inclusive_plot_writing_unit(arg):
         f = make_generic_mc_data_plots(
             edges, values_mc_list, yerr_mctot, values_data, yerrlo_data, yerrhi_data,
             [f'MC ({args.flvbin[iflv]})' for iflv in args.iflvbin_order], args.color_mc,
-            xlabel, 'Events / bin', args.year, args.lumi, use_helvetica=args.use_helvetica
+            xlabel, 'Events / bin', args.year, args.lumi,
+            use_helvetica=args.use_helvetica, plot_args=plot_args
         )
         plt.savefig(os.path.join(webdir, f'incl_{var}_csl{ibdt}_{args.year}_pt{ptmin}to{ptmax}.png'))
         plt.savefig(os.path.join(webdir, f'incl_{var}_csl{ibdt}_{args.year}_pt{ptmin}to{ptmax}.pdf'))
-        plt.close()
+        plt.close(f)
 
 
 def get_unit_template(bhs, wp, pt_lim, ibdt, w_untype, ipasswp, iflv, is_mc=True, is_incl=False, additional_options={}):

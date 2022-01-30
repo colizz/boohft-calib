@@ -165,7 +165,7 @@ class FitUnit(ProcessingUnit):
 
     def make_webpage(self):
         r"""Summarize all fit results and plots in one webpage.
-        Inherit from the web_mode making code: https://github.com/colizz/ParticleNet-CCTagCalib/blob/main/make_html.py
+        Inherit from the web making code: https://github.com/colizz/ParticleNet-CCTagCalib/blob/main/make_html.py
         """
 
         _logger.info('[Make webpage]: Collecting all derived SF results and plots in one webpage.')
@@ -241,7 +241,7 @@ class FitUnit(ProcessingUnit):
                     # get all logs for sfBDT variation and sorted by sfBDT order
                     loglist = sorted([pjoin(d, 'fit.log') for d in get_dir(mode, wp, pt, 'bdt*', return_list=True)])
                     center, _, _ = read_sf_from_log(loglist, sf=sf)
-                    center = center[center != np.nan]
+                    center = center[~np.isnan(center)]
                     c_center, c_errl, c_errh = read_sf_from_log([pjoin(get_dir(mode, wp, pt, get_central_sfbdt(mode, wp, pt)), 'fit.log')], sf=sf)
                     c_center, c_errl, c_errh = c_center[0], c_errl[0], c_errh[0]
                     import math
@@ -266,15 +266,15 @@ class FitUnit(ProcessingUnit):
             web_helper.add_text('|       | ' + ' | '.join([f'pT {pt_title(ptmin, ptmax)}' for ptmin, ptmax in pt_edge_pairs]) + ' |')
             web_helper.add_text('| :---: '*(len(pt_list)+1) + '|')
 
-            def to_float_fix_nan(x_in: list):
+            def fix_nan(x_in: list):
                 x_out = []
                 n = len(x_in)
                 for i, x in enumerate(x_in):
-                    if x != np.nan:
+                    if not np.isnan(x):
                         x_out.append(x)
                     else: # interpolate NaNs
-                        for p in range(1, 10):
-                            if x_in[(i+p) % n] != np.nan and x_in[(i-p) % n] != np.nan:
+                        for p in range(1, n):
+                            if not np.isnan(x_in[(i+p) % n]) and not np.isnan(x_in[(i-p) % n]):
                                 x_out.append(0.5 * (x_in[(i+p) % n] + x_in[(i-p) % n]))
                                 break
                         else:
@@ -291,12 +291,12 @@ class FitUnit(ProcessingUnit):
                 for pt in pt_list: # for each column 
                     # get all logs for sfBDT variation and sorted by sfBDT order
                     loglist = sorted([pjoin(d, 'fit.log') for d in get_dir(mode, wp, pt, 'bdt*', return_list=True)])
-                    center, errl, errh = map(to_float_fix_nan, read_sf_from_log(loglist, sf=sf))
-                    # c_center, c_errl, c_errh = map(to_float_fix_nan, read_sf_from_log([pjoin(get_dir(mode, wp, pt, get_central_sfbdt(mode, wp, pt)), 'fit.log')], sf=sf))
+                    center, errl, errh = map(fix_nan, read_sf_from_log(loglist, sf=sf))
+                    # c_center, c_errl, c_errh = map(fix_nan, read_sf_from_log([pjoin(get_dir(mode, wp, pt, get_central_sfbdt(mode, wp, pt)), 'fit.log')], sf=sf))
 
                     nbdt = len(center)
                     # average quantiles over all fit points
-                    func_quantile = lambda x: sum([norm.cdf(val) for val in list((x-center>=0) * (x-center)/errh + (x-center<0) * (-x+center)/errl)]) / nbdt
+                    func_quantile = lambda x: sum([norm.cdf(val) for val in list((x-center>=0) * (x-center)/np.maximum(errh, 0.01) + (x-center<0) * (x-center)/np.maximum(-np.array(errl), 0.01))]) / nbdt
                     x = np.linspace(0., 2., 100)
                     y = np.array([func_quantile(i) for i in x])
                     finv = interp1d(y, x)
@@ -340,7 +340,7 @@ class FitUnit(ProcessingUnit):
                         f'| **{self.global_cfg.default_wp_name_map[wp]}** WP | ' \
                         + ' | '.join([f'**{c:.3f}** [{el:+.3f}/{eh:+.3f}]' for c, el, eh in zip(center, errl, errh)]) + ' |'
                     )
-                    if sum(center == np.nan) > 0:
+                    if any(np.isnan(center)) > 0:
                         _logger.error(f'multifit failed... ', wp, 'central SFs: ', center)
 
                 ## include an extra table for merging all sfBDT variation results
@@ -528,9 +528,7 @@ class FitUnit(ProcessingUnit):
         )
         web.add_text('Copy the LaTeX format below for easy documentation.')
         web.add_text('Detailed fit results and plots can be found in the **following links**.\n\n')
-        web.end_this_md_block() # pure text must not be put under the zero-md tag otherwise the md symbols are interpreted..
         web.add_textarea(latex_str, width=1200, height=250)
-        web.begin_new_md_block()
 
         # conclude results for each of the three modes
         web.add_text('\n---------------')
@@ -568,7 +566,7 @@ def concurrent_fit_unit(arg):
 
     # 1. Launch the fit
     if not args.skip_fit:
-        _logger.debug("Run fit point " + workdir)
+        # _logger.debug("Run fit point " + workdir)
         if is_central and args.run_impact_for_central_fit:
             out, ret = runcmd(f"bash cmssw/launch_fit.sh {inputdir} {workdir} --type={args.type} --mode={mode} --run-impact --run-unce-breakdown")
         else:

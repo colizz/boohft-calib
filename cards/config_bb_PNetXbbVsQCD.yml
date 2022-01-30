@@ -3,7 +3,7 @@
 ###############
 
 ## Routine name
-routine_name: 20220124_bb_ULNanoV9_PNetXbbVsQCD_ak8
+routine_name: example_bb_ULNanoV9_PNetXbbVsQCD_ak8
 
 ## Type of the tagger, can be 'bb' or 'cc'. This is used in the choice of proxy - e.g. for 'bb' one use
 ## g->bb as the proxy of bb resonance signal and extract the SF from the flavour B component.
@@ -33,7 +33,7 @@ tagger:
   span: [0., 1.]
 
   ## Working points of the tagger for calibration. Format: name: [low, high]
-  wps: {HP: [0.9967, 1.], MP: [0.9912, 0.9967], LP: [0.9804, 0.9912]}
+  wps: {HP: [0.9967, 1.], MP: [0.9912, 0.9967], LP: [0.9804, 0.9912]} # these are specific to year 2018
 
 
 ########################
@@ -42,8 +42,6 @@ tagger:
 ## Specify the main analysis tree used to extract the signal tagger shape
 
 main_analysis_tree:
-  name: hh4b
-
   ## The sample path: can be relative or absolute path. $YEAR is a placeholder of year in format e.g. 2018
   ## treename: the name of the tree to read in the file
   path: /data/pku/home/licq/hcc/new/samples/trees_sf/20211128_ULNanoV9_ak8_qcd_$YEAR/signal/hbb_1000.root
@@ -56,9 +54,6 @@ main_analysis_tree:
   
   ## Name or expression of the same tagger defined in this tree
   tagger: fj_x_ParticleNetMD_XbbVsQCD
-  
-  ## Name of jet pT var defined in this tree
-  pt_var: fj_x_pt
 
   ## Event weight expression
   weight: genWeight*xsecWeight*puWeight
@@ -70,7 +65,7 @@ main_analysis_tree:
 
 ## Step 1 can be shared across all routines with the same year conditions. Uncomment this line and specify a
 ## previous routine run in the same condition
-# reuse_mc_weight_from_routine: 20220124_bb_ULNanoV9_some_other_routine_ak8
+# reuse_mc_weight_from_routine: some_other_routine_name
 
 ## Step 4 will by default run the impact plots for the central fit point, which is time-consuming. Uncomment
 ## this line to skip running the impact
