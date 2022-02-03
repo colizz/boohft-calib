@@ -1,0 +1,63 @@
+###############
+## Main info ## 
+###############
+
+## Routine name
+# ====================
+# to recast the results shown in BTV, using framework v1.0 (earliest ParticleNet version)
+# https://indico.cern.ch/event/980437/contributions/4134498/attachments/2158018/3640299/20.12.07_BTV_ParticleNet%20cc-tagger%20calibration%20for%20AK15%20jets%20using%20the%20g-_cc%20method.pdf
+# ====================
+routine_name: 20220128_cc_preUL_recast_vhccBTV_PNetXccVsQCD_ak15
+
+## Type of the tagger, can be 'bb' or 'cc'. This is used in the choice of proxy - e.g. for 'bb' one use
+## g->bb as the proxy of bb resonance signal and extract the SF from the flavour B component.
+type: cc
+
+## Year of the UL condition. Can be 2016, 2017, 2018
+year: 2018
+
+## Prefix of the main samples produced from NanoHRT. $YEAR is a placeholder of year in format e.g. 2018
+# 'sample_prefix' follows the name format as produced by NanoHRT-tools (see README)
+sample_prefix: /data/pku/home/licq/hcc/new/samples/trees_sf/20201028_nohtwbdt_v2_ak15_qcd_$YEAR
+
+## Jet pT ranges for fit ('name' used as an identifier)
+## e.g. for edges (e1, e2, e3), will define three pT range [e1, e2), [e2, e3), [e3, +inf)
+pt_edges: [200, 250, 300, 350, 400, 500]
+
+
+#######################
+## Tagger defination ##
+#######################
+tagger:
+  ## The variable name or expression of the tagger. Name convention same to that stored under NanoAODv9.
+  ## example expression: FatJet_particleNetMD_Xbb / (FatJet_particleNetMD_Xbb + FatJet_particleNetMD_QCD)
+  expr: FatJet_particleNetMD_XccVsQCD
+
+  ## Span of the tagger range
+  span: [0., 1.]
+
+  ## Working points of the tagger for calibration. Format: name: [low, high]
+  wps: {HP: [0.95, 1.], MP: [0.90, 0.95], LP: [0.80, 0.90]}
+
+
+########################
+## Main analysis tree ##
+########################
+## Specify the main analysis tree used to extract the signal tagger shape
+
+main_analysis_tree:
+  ## The sample path: can be relative or absolute path. $YEAR is a placeholder of year in format e.g. 2018
+  ## treename: the name of the tree to read in the file
+  path: /data/pku/home/licq/hcc/new/samples/trees/20201023_VH_flavBDT_$YEAR_2L/mc/vhcc_tree.root
+  treename: Events
+
+  ## The selection used for this sample in the main analysis. This is how we enable that the g->cc 
+  ## (or g->bb) jets serve as a reasonable proxy to the signal jets under the phase-space defined below
+  ## *NOTE*: should always use parentheses between & and |
+  selection: (v_mass>75) & (v_mass<105) & (((abs(lep1_pdgId)==11) & passTrigEl) | ((abs(lep1_pdgId)==13) & passTrigMu)) & (v_pt>200) & (ak15_pt>200) & (dphi_V_ak15>2.5) & (ak15_sdmass>50) & (ak15_sdmass<200) & (n_ak4<3)
+  
+  ## Name or expression of the same tagger defined in this tree
+  tagger: ak15_ParticleNetMD_HccVsQCD
+
+  ## Event weight expression
+  weight: genWeight*xsecWeight*puWeight
