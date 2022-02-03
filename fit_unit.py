@@ -105,6 +105,7 @@ class FitUnit(ProcessingUnit):
         _logger.info("[Postprocess]: Launch the fit in the threaded workflow.")
 
         # 1. Setup CMSSW environment
+        _logger.info("[Postprocess]: Set up the CMSSW environment...")
         out, ret = runcmd("bash cmssw/env_setup.sh")
         if ret != 0:
             _logger.exception("Error running cmssw setup:\n\n" + out)
@@ -150,6 +151,7 @@ class FitUnit(ProcessingUnit):
             return args_collection
 
         # run all fits concurrently
+        _logger.info(f"[Postprocess]: Launch all fit points on {self.workers} concurrent workers.")
         for args in get_fit_arguments():
             fit_handler.book(args)
         result = fit_handler.run(concurrent_fit_unit)
