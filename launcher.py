@@ -1,6 +1,6 @@
 """
 Launcher for the command line interface to the calibration tool. Example:
-    python launcher.py cards/config_bb_PNetXbbVsQCD.yml
+    python launcher.py cards/example_bb_PNetXbbVsQCD.yml
 
 """
 

@@ -14,12 +14,15 @@ year: 2018
 
 ## Prefix of the main samples produced from NanoHRT. $YEAR is a placeholder of year in format e.g. 2018
 # 'sample_prefix' follows the name format as produced by NanoHRT-tools (see README)
-sample_prefix: /data/pku/home/licq/hcc/new/samples/trees_sf/20211128_ULNanoV9_ak8_qcd_$YEAR
+sample_prefix: /eos/user/c/coli/cms-repo/boohft-calib/samples/20220130_ULNanoV9_ak8_qcd_$YEAR
 
 ## Jet pT ranges for fit ('name' used as an identifier)
 ## e.g. for edges (e1, e2, e3), will define three pT range [e1, e2), [e2, e3), [e3, +inf)
 pt_edges: [400, 600, 800]
 
+## [Optional]: Step 4 will by default run the impact for the central fit point, which is time-consuming.
+## For this example we temporarily disable the feature
+run_impact_for_central_fit: false
 
 #######################
 ## Tagger defination ##
@@ -33,8 +36,7 @@ tagger:
   span: [0., 1.]
 
   ## Working points of the tagger for calibration. Format: name: [low, high]
-  wps: {HP: [0.9967, 1.], MP: [0.9912, 0.9967], LP: [0.9804, 0.9912]} # these are specific to year 2018
-
+  wps: {HP: [0.9967, 1.], MP: [0.9913, 0.9967], LP: [0.9806, 0.9913]} # these are specific to year 2018
 
 ########################
 ## Main analysis tree ##
@@ -44,7 +46,7 @@ tagger:
 main_analysis_tree:
   ## The sample path: can be relative or absolute path. $YEAR is a placeholder of year in format e.g. 2018
   ## treename: the name of the tree to read in the file
-  path: /data/pku/home/licq/hcc/new/samples/trees_sf/20211128_ULNanoV9_ak8_qcd_$YEAR/signal/hbb_1000.root
+  path: /eos/user/c/coli/cms-repo/boohft-calib/samples/20220130_ULNanoV9_ak8_qcd_$YEAR/signal/hbb_1000.root
   treename: Events
 
   ## The selection used for this sample in the main analysis. This is how we enable that the g->cc 
@@ -57,16 +59,3 @@ main_analysis_tree:
 
   ## Event weight expression
   weight: genWeight*xsecWeight*puWeight
-
-
-######################
-## Optional configs ##
-######################
-
-## Step 1 can be shared across all routines with the same year conditions. Uncomment this line and specify a
-## previous routine run in the same condition
-# reuse_mc_weight_from_routine: some_other_routine_name
-
-## Step 4 will by default run the impact plots for the central fit point, which is time-consuming. Uncomment
-## this line to skip running the impact
-# run_impact_for_central_fit: false
