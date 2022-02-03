@@ -32,7 +32,7 @@ python launcher.py cards/example_bb_PNetXbbVsQCD.yml
 
 See `launcher.py` for more information on the command arguments.
 
-Note: the tool uses 8 concurrent workers by default. On lxplus it will run by estimation 8 hrs for an entire routine. Sepcify more workers if you have more CPU resource.
+Note: the tool uses 8 concurrent workers by default. On lxplus it will run by estimation 4 hrs for an entire routine. Sepcify more workers if you have more CPU resource.
 
 2. Run on SWAN
 
