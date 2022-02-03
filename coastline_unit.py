@@ -170,11 +170,11 @@ class CoastlineUnit(ProcessingUnit):
 
         ## Transfrom the tagger to uniform distribution
         tmin, tmax = self.global_cfg.tagger.span
-        hist = bh.Histogram(bh.axis.Regular(self.nbin2d, tmin, tmax), storage=bh.storage.Weight())
+        hist = bh.Histogram(bh.axis.Regular(1000, tmin, tmax), storage=bh.storage.Weight())
         hist.fill(tagger, weight=weight)
 
         # cumulative distribution of the tagger:
-        x = np.linspace(tmin, tmax, self.nbin2d + 1)
+        x = np.linspace(tmin, tmax, 1000 + 1)
         y = np.maximum(hist.view().value, 1e-5)
         y_cum = np.insert(np.cumsum(y / sum(y)), 0, 0.)
         # plt.plot(x, y_cum); plt.show()
@@ -315,6 +315,8 @@ class CoastlineUnit(ProcessingUnit):
         web = WebMaker(self.job_name)
 
         web.add_h1("Tagger transformation")
+        web.add_text(f"Defined WPs: {self.global_cfg.tagger.wps}")
+        web.add_text()
 
         # first make the tagger transformation map
         f, ax = plt.subplots(figsize=(10, 10))
@@ -364,7 +366,9 @@ class CoastlineUnit(ProcessingUnit):
         for i, (ptmin, ptmax) in enumerate(zip(pt_edges[:-1], pt_edges[1:])):
             f, ax = plt.subplots(figsize=(10, 10))
             hep.cms.label(data=True, llabel='Preliminary', year=year, ax=ax, rlabel=r'%s $fb^{-1}$ (13 TeV)' % lumi, fontname='sans-serif')
-            im = ax.imshow(self.coastline_map[i]['arr2d'][:, ::-1].T, norm=mpl.colors.LogNorm(), interpolation='nearest', extent=[0, 1, 0, 1], cmap=plt.cm.jet)
+            arr2d =  self.coastline_map[i]['arr2d']
+            arr2d[arr2d == 0.] = np.nan # leave the pixel blank if no entry
+            im = ax.imshow(arr2d[:, ::-1].T, norm=mpl.colors.LogNorm(), interpolation='nearest', extent=[0, 1, 0, 1], cmap=plt.cm.jet)
             f.colorbar(im, ax=ax)
             ax.set_xlabel('Transformed tagger'); ax.set_ylabel('sfBDT')
 
