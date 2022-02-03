@@ -430,6 +430,7 @@ def concurrent_inclusive_plot_writing_unit(arg):
     args, webdir, h, (var, xlabel), (ptmin, ptmax), nbdt, plot_args = arg
     bdt_indices = [bh.underflow] + list(range(nbdt - 1)) + [bh.overflow]
     edges = h.axes[-1].edges
+    mpl.use('Agg') # standalone job should individually specify the mpl mode...
     for ibdt in range(nbdt + 1): # different tightness of coastline selection
         h_data = bh.sum([ # sum over ibdt
             h[bh.loc('jetht'), :, bdt_indices[iibdt], :] for iibdt in range(ibdt + 1)
