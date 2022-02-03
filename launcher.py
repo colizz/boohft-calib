@@ -7,6 +7,7 @@ Launcher for the command line interface to the calibration tool. Example:
 from types import SimpleNamespace
 import copy
 import yaml
+import json
 import os
 
 from mc_reweight_unit import MCReweightUnit
@@ -31,6 +32,15 @@ def load_global_cfg(config_path):
     return global_cfg
 
 
+def write_global_cfg(cfg, webpage):
+    cfg_dump = copy.deepcopy(cfg.__dict__)
+    for subattr in ['tagger', 'main_analysis_tree']:
+        cfg_dump[subattr] = cfg_dump[subattr].__dict__
+    web = WebMaker('global config')
+    web.add_text('```json\n' + json.dumps(cfg_dump, indent=4) + '\n```')
+    web.write_to_file(webpage, filename='global_cfg.html')
+
+
 def launch_routine(global_cfg):
 
     _logger.info(f'Run with the global configuration: {global_cfg}')
@@ -40,7 +50,7 @@ def launch_routine(global_cfg):
     workers = global_cfg.workers
     run_step = str(global_cfg.run_step)
     assert len(workers) == 4, "Invaild arguemnt for 'workers'."
-    assert all(i in '01' for i in run_step), "Invaild arguemnt for 'run_step'."
+    assert len(run_step) == 4 and all(i in '01' for i in run_step), "Invaild arguemnt for 'run_step'."
 
     # Run step 1-4 sequence
     if run_step[0] == '1':
@@ -77,7 +87,11 @@ def launch_routine(global_cfg):
     web.add_text(' 2. [sfBDT coastline](2_coastline/): visualize the sfBDT coastline cut to make good gluon-spliting proxy.')
     web.add_text(' 3. [template writer](3_tmpl_writer/): Some inclusive plots on relavent variables.')
     web.add_text(' 4. [>> *SF summary* <<](4_fit/): Fit results and SF summary.')
+    web.add_text()
+    web.add_text('[Global config](global_cfg.html) for this routine.')
     web.write_to_file(webpage)
+    write_global_cfg(global_cfg, webpage)
+
     _logger.info(f'Job done! Everything write to webpage: {webpage}')
 
 
@@ -107,7 +121,7 @@ if __name__ == '__main__':
     parser.add_argument('config_path')
     parser.add_argument('--workers', '-w', nargs='+', type=int, default=None,
         help='Number of concurrent workers for the coffea and standalone processor. Will overide the option in base config.')
-    parser.add_argument('--run-step', '-s', type=int, default=None,
+    parser.add_argument('--run-step', '-s', type=str, default=None,
         help='Four bool digits to control whether or not to run each of the four steps. Will overide the option in base config.')
     parser.add_argument('--multi-years', '-y', nargs='+', type=str, default=None,
         help='Specify one or multiple year(s) options to run. Will overide the option in the config card.')
