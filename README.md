@@ -40,15 +40,29 @@ Note: the tool uses 8 concurrent workers by default. On lxplus it will run by es
 
 Each routine will run by estimation 8 hrs on SWAN.
 
-To run on SWAN, click the link, start a SWAN session with LCG96 Python3 stack (4 cores, 16GB), then open and run the `launcher_swan.ipynb` notebook. This will launch a routine configured by the example card.
+To run on SWAN, click the link, start a SWAN session with LCG96 Python3 stack (4 cores, 16GB), then open the `launcher_swan.ipynb` notebook and run all the blocks. This will launch a routine configured by the example card.
 
+## Configuration card
 
+The configuration card (e.g., the example card `cards/example_bb_PNetXbbVsQCD.yml`) defines everything for a routine. As a brief summary, users should specify
+ - the type of calibration: can be `bb` or `cc`;
+ - the year of UL condition: can be `2016APV`, `2016`, `2017`, or `2018`;
+ - jet pT ranges for deriving separate SFs;
+ - the tagger information, including the tagger name/expression, the span, and the custom WPs defined in the user's analysis;
+ - info of a signal ROOT tree taken from the user's analysis which the tool uses for extracting the signal tagger shape.
+
+See detailed explanation in the example card [`cards/example_bb_PNetXbbVsQCD.yml`](cards/example_bb_PNetXbbVsQCD.yml).
+
+--------
 ## Update notes
 
-v3.0.1 Jan 29 2022
+v3.0.2 Feb 5, 2022
+ - Implement the year condition for 2016APV and 2016
+
+v3.0.1 Jan 29, 2022
  - Support more command line arguments
 
-v3.0.0 Jan 24 2022
+v3.0.0 Jan 24, 2022
  - Update the method to sfBDT coastline
  - Update the framework to coffea (supports local run at present)
 

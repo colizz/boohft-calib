@@ -1,7 +1,7 @@
 ## This card includes all base configurations for the tool
 ## Please do not modify the content here but instead rewrite the item in the calibration config cards
 
-version: v3.0.1
+version: v3.0.2
 
 ##############################
 ## Configuration on modules ##
@@ -43,7 +43,7 @@ show_sfbdt_variation_all_flavour: false  # if true, show all flavour plots for s
 ## Predefined values ##
 #######################
 
-lumi_dict: {"2016": 35.92, "2017": 41.53, "2018": 59.74}
+lumi_dict: {"2016APV": 19.52, "2016": 16.81, "2017": 41.48, "2018": 59.83}
 
 fileset_template:
   qcd-mg:  mc/qcd-mg_tree.root
@@ -53,6 +53,7 @@ fileset_template:
 
 # used HLT_PFHT* branches depend on year
 hlt_branches: 
+  "2016APV": [HLT_PFHT125, HLT_PFHT200, HLT_PFHT250, HLT_PFHT300, HLT_PFHT350, HLT_PFHT400, HLT_PFHT475, HLT_PFHT600, HLT_PFHT650, HLT_PFHT800, HLT_PFHT900]
   "2016": [HLT_PFHT125, HLT_PFHT200, HLT_PFHT250, HLT_PFHT300, HLT_PFHT350, HLT_PFHT400, HLT_PFHT475, HLT_PFHT600, HLT_PFHT650, HLT_PFHT800, HLT_PFHT900]
   "2017": [HLT_PFHT180, HLT_PFHT250, HLT_PFHT370, HLT_PFHT430, HLT_PFHT510, HLT_PFHT590, HLT_PFHT680, HLT_PFHT780, HLT_PFHT890, HLT_PFHT1050, HLT_PFHT350]
   "2018": [HLT_PFHT180, HLT_PFHT250, HLT_PFHT370, HLT_PFHT430, HLT_PFHT510, HLT_PFHT590, HLT_PFHT680, HLT_PFHT780, HLT_PFHT890, HLT_PFHT1050, HLT_PFHT350]
