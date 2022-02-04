@@ -88,12 +88,13 @@ class WebMaker(object):
     </style>
 </head>
 <body>
+<button onclick="replaceYear(2016APV)">2016APV</button>
 <button onclick="replaceYear(2016)">2016</button>
 <button onclick="replaceYear(2017)">2017</button>
 <button onclick="replaceYear(2018)">2018</button>
 <script>
 function replaceYear(y) {
-    location.href=location.href.replace(new RegExp('201[678]'), y);
+    location.href=location.href.replace(new RegExp('(2016APV|2016|2017|2018)'), y);
 }
 </script>
 
