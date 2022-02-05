@@ -18,6 +18,22 @@ def set_sns_color(*args):
     sns.set_palette(*args)
 
 
+def plt_savefig_infinite(filename):
+    import time
+    import random
+    _try = 1
+    # on SWAN matplotlib somehow cannot store PDF in multiple concurrent threads... have to do it ugly.
+    while True:
+        try:
+            if _try % 1000 == 0:
+                _logger.error(f'Saving PDF {filename} failed for {_try} times...')
+            plt.savefig(filename)
+            break
+        except:
+            _try += 1
+            time.sleep(random.random())
+
+
 def make_stacked_plots(inputdir, workdir, args, plot_unce=True, save_plots=True):
     r"""Make the stacked histograms for both pre-fit and post-fit based on the fitDiagnosticsTest.root
     Arguments:
@@ -74,7 +90,7 @@ def make_stacked_plots(inputdir, workdir, args, plot_unce=True, save_plots=True)
             
             if save_plots:
                 plt.savefig(f'{workdir}/stack_{title}_{b}{plot_unce_suf}.png')
-                plt.savefig(f'{workdir}/stack_{title}_{b}{plot_unce_suf}.pdf')
+                plt_savefig_infinite(f'{workdir}/stack_{title}_{b}{plot_unce_suf}.pdf')
                 plt.close()
 
 
@@ -115,7 +131,7 @@ def make_prepostfit_plots(inputdir, workdir, args, save_plots=True):
 
         if save_plots:
             plt.savefig(f'{workdir}/prepostfit_{b}.png')
-            plt.savefig(f'{workdir}/prepostfit_{b}.pdf')
+            plt_savefig_infinite(f'{workdir}/prepostfit_{b}.pdf')
             plt.close()
 
 
@@ -160,7 +176,7 @@ def make_shape_unce_plots(inputdir, workdir, args, unce_type=None, save_plots=Tr
         
         if save_plots:
             plt.savefig(f'{workdir}/unce_comp_{unce_type}_{b}.png')
-            plt.savefig(f'{workdir}/unce_comp_{unce_type}_{b}.pdf')
+            plt_savefig_infinite(f'{workdir}/unce_comp_{unce_type}_{b}.pdf')
             plt.close()
 
 
@@ -238,7 +254,7 @@ def make_generic_mc_data_plots(
     store_name = kwargs.get('store_name', None)
     if store_name:
         plt.savefig(store_name + '.png')
-        plt.savefig(store_name + '.pdf')
+        plt_savefig_infinite(store_name + '.pdf')
         plt.close()
         return
     else:
@@ -314,7 +330,7 @@ def make_sfbdt_variation_plot(center, errl, errh, c_idx, sf, outputdir, args, pl
     ax.text(0.10, 0.10, plot_text[0], fontweight='bold', transform=ax.transAxes)
     ax.text(0.30, 0.10, plot_text[1], transform=ax.transAxes)
     plt.savefig(os.path.join(outputdir, plot_name + '.png'))
-    plt.savefig(os.path.join(outputdir, plot_name + '.pdf'))
+    plt_savefig_infinite(os.path.join(outputdir, plot_name + '.pdf'))
     plt.close()
 
 
@@ -353,5 +369,5 @@ def make_fit_summary_plots(center, errl, errh, outputdir, args, plot_xticklabels
     ax.legend(loc='lower left')
 
     plt.savefig(os.path.join(outputdir, plot_name + '.png'))
-    plt.savefig(os.path.join(outputdir, plot_name + '.pdf'))
+    plt_savefig_infinite(os.path.join(outputdir, plot_name + '.pdf'))
     plt.close()
