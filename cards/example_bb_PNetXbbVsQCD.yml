@@ -16,8 +16,8 @@ year: 2018
 ## This need not be changed except for expert use.
 sample_prefix: /eos/user/c/coli/cms-repo/boohft-calib/samples/20220130_ULNanoV9_ak8_qcd_$YEAR
 
-## Jet pT ranges for fit ('name' used as an identifier)
-## e.g. for edges (e1, e2, e3), will define three pT range [e1, e2), [e2, e3), [e3, +inf)
+## Jet pT edges to define multiple exclusive ranges for fit
+## e.g. for edges [e1, e2, e3], will define three pT range [e1, e2), [e2, e3), [e3, +inf)
 pt_edges: [400, 600, 800]
 
 ## [Optional]: Step 4 will by default run the impact for the central fit point, which is time-consuming.
@@ -35,8 +35,11 @@ tagger:
   ## Span of the tagger range
   span: [0., 1.]
 
-  ## Working points of the tagger for calibration. Format: name: [low, high]
-  wps: {HP: [0.9967, 1.], MP: [0.9913, 0.9967], LP: [0.9806, 0.9913]} # these are specific to year 2018
+  ## Dictionary of the custom working points defined in user's analysis. Derived SFs directly corrspond
+  ## to these WPs. Format: {name: [low, high], ...}
+  ## Note: below values are taken only as an example. Please optimize and choose the WPs dedicated to
+  ## the user's anlaysis
+  wps: {HP: [0.995, 1.], MP: [0.990, 0.995], LP: [0.980, 0.990]} # example only
 
 ########################
 ## Main analysis tree ##
@@ -44,18 +47,19 @@ tagger:
 ## Specify the main analysis tree used to extract the signal tagger shape
 
 main_analysis_tree:
-  ## The sample path: can be relative or absolute path. $YEAR is a placeholder of year in the format above
+  ## path: ROOT file path of the user's signal sample. $YEAR is a placeholder of year in the format above
   ## treename: the name of the tree to read in the file
   path: /eos/user/c/coli/cms-repo/boohft-calib/samples/20220130_ULNanoV9_ak8_qcd_$YEAR/signal/hbb_1000.root
   treename: Events
 
-  ## The selection used for this sample in the main analysis. This is how we enable that the g->cc 
-  ## (or g->bb) jets serve as a reasonable proxy to the signal jets under the phase-space defined below
+  ## The selection used for this sample applied in the user's analysis. This will ensure us to find the
+  ## correct g->bb (or g->cc) jet phase-space that serves as a reasonable proxy to the resonance signal jets
+  ## under this user-specified selection
   ## *NOTE*: should always use parentheses between & and |
   selection: (fj_x_pt>200) & (fj_x_dr_H<0.8)
   
-  ## Name or expression of the same tagger defined in this tree
+  ## Name of the same tagger branch defined in this tree
   tagger: fj_x_ParticleNetMD_XbbVsQCD
 
-  ## Event weight expression
+  ## Event weight expression used in the user's analysis
   weight: genWeight*xsecWeight*puWeight
