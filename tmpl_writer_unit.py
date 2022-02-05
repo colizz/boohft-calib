@@ -445,16 +445,14 @@ def concurrent_inclusive_plot_writing_unit(arg):
         values_data = h_data[bh.sum, :].values()
         yerr_mctot = np.sqrt(h_mc[bh.sum, :].variances())
         yerrlo_data = yerrhi_data = np.sqrt(h_data[bh.sum, :].variances())
+        store_name = os.path.join(webdir, f'incl_{var}_csl{ibdt}_{args.year}_pt{ptmin}to{ptmax}')
 
-        f = make_generic_mc_data_plots(
+        make_generic_mc_data_plots(
             edges, values_mc_list, yerr_mctot, values_data, yerrlo_data, yerrhi_data,
             [f'MC ({args.flvbin[iflv]})' for iflv in args.iflvbin_order], args.color_mc,
             xlabel, 'Events / bin', args.year, args.lumi,
-            use_helvetica=args.use_helvetica, plot_args=plot_args
+            use_helvetica=args.use_helvetica, plot_args=plot_args, store_name=store_name
         )
-        plt.savefig(os.path.join(webdir, f'incl_{var}_csl{ibdt}_{args.year}_pt{ptmin}to{ptmax}.png'))
-        plt.savefig(os.path.join(webdir, f'incl_{var}_csl{ibdt}_{args.year}_pt{ptmin}to{ptmax}.pdf'))
-        plt.close(f)
 
 
 def get_unit_template(bhs, wp, pt_lim, ibdt, w_untype, ipasswp, iflv, is_mc=True, is_incl=False, additional_options={}):

@@ -233,7 +233,16 @@ def make_generic_mc_data_plots(
     hep.histplot(values_data/values_mctot_clip, yerr=(yerrlo_data/values_mctot_clip, yerrhi_data/values_mctot_clip), 
                  bins=edges, histtype='errorbar', color='k', markersize=15, elinewidth=1
                  )
-    return f
+    
+    # store the plots on demand
+    store_name = kwargs.get('store_name', None)
+    if store_name:
+        plt.savefig(store_name + '.png')
+        plt.savefig(store_name + '.pdf')
+        plt.close()
+        return
+    else:
+        return f
 
 
 ############################################
