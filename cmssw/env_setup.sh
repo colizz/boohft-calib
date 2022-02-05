@@ -2,6 +2,9 @@
 
 WORKDIR=$PWD
 
+# trick for SWAN: unset previous python env
+unset PYTHONPATH
+unset PYTHONHOME
 source /cvmfs/cms.cern.ch/cmsset_default.sh
 export SCRAM_ARCH=slc7_amd64_gcc700
 export RELEASE=CMSSW_10_2_27
