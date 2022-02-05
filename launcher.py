@@ -107,7 +107,7 @@ def launch(config_path, workers=None, run_step=None, multi_years=None):
     if multi_years is None: # use the year specified in the config card
         launch_routine(global_cfg_base)
     else:
-        assert all(year in ['2016', '2017', '2018'] for year in multi_years), "Please specify the correct year format"
+        assert all(year in ['2016APV', '2016', '2017', '2018'] for year in multi_years), "Please specify the correct year format"
         for year in multi_years: # iterate over all specified year
             global_cfg = copy.deepcopy(global_cfg_base)
             global_cfg.year = year
