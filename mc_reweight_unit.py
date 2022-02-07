@@ -165,7 +165,7 @@ class MCReweightUnit(ProcessingUnit):
                     'edges': h_data_fj[jetidx].axis('ht').edges().tolist(),
                     'h_data': h_data_fj[jetidx].to_boost().values(flow=True).tolist(),
                     'h_mc': h_mc_fj[jetidx].to_boost().values(flow=True).tolist(),
-                    'h_w': np.clip(h_data_fj[jetidx].to_boost().values(flow=True) / h_mc_fj[jetidx].to_boost().values(flow=True), 0., 2.).tolist(),
+                    'h_w': np.clip(h_data_fj[jetidx].to_boost().values(flow=True) / np.maximum(h_mc_fj[jetidx].to_boost().values(flow=True), 1e-20), 0., 2.).tolist(),
                 }
                 hist_values[f'{jetidx}_pt{ptmin}to{ptmax}'] = _stored
 
