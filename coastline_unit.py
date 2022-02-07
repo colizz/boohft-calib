@@ -148,15 +148,6 @@ class CoastlineUnit(ProcessingUnit):
             os.makedirs(self.outputdir)
         if not os.path.exists(self.webdir):
             os.makedirs(self.webdir)
-        
-
-    def load_pickle(self, attrname: str):
-        if not os.path.isfile(os.path.join(self.outputdir, attrname + '.pickle')):
-            _logger.exception('Cannot find ' + os.path.join(self.outputdir, attrname + '.pickle'))
-            raise
-
-        with open(os.path.join(self.outputdir, attrname + '.pickle'), 'rb') as f:
-            setattr(self, attrname, pickle.load(f))
 
 
     def preprocess(self):
@@ -314,10 +305,6 @@ class CoastlineUnit(ProcessingUnit):
         # Init the web maker
         web = WebMaker(self.job_name)
 
-        web.add_h1("Tagger transformation")
-        web.add_text(f"Defined WPs: {self.global_cfg.tagger.wps}")
-        web.add_text()
-
         # first make the tagger transformation map
         f, ax = plt.subplots(figsize=(10, 10))
         hep.cms.label(data=True, llabel='Preliminary', year=year, ax=ax, rlabel=r'%s $fb^{-1}$ (13 TeV)' % lumi, fontname='sans-serif')
@@ -331,9 +318,9 @@ class CoastlineUnit(ProcessingUnit):
         plt.savefig(os.path.join(self.webdir, f'tagger_trans.pdf'))
         plt.close()
 
-        web.add_figure(self.webdir, src='tagger_trans.png', title='tagger transformation map')
 
         # then make signal shape on the original and transformed tagger, and positions of the WPs
+        sig_effs = []
         for histname, desc, xlims, xtitle, color in zip(['hist', 'xhist'], ['original', 'transformed'], \
             [(0., 1.), (tmin, tmax)], ['Tagger', 'Transformed tagger'], ['grey', 'royalblue']):
             f, ax = plt.subplots(figsize=(10, 10))
@@ -345,6 +332,7 @@ class CoastlineUnit(ProcessingUnit):
             for wp, (lo, hi) in self.global_cfg.tagger.wps.items():
                 if histname == 'xhist': # do transformation on WP edges
                     lo, hi = self.xtagger_map(lo), self.xtagger_map(hi)
+                    sig_effs.append((lo, hi)) # store the bounds of the transformed tagger score, equivlent as the signal efficiencies at the original tagger
                 ax.plot([lo, lo], [0., ymax], color='grey', linestyle='dotted') # vertical line to separate WPs
                 ax.text((lo + hi)/2, 0.82 * ymax, wp, ha='center', fontweight='bold')
             ax.set_xlabel(xtitle); ax.set_ylabel('Events / bin')
@@ -353,6 +341,17 @@ class CoastlineUnit(ProcessingUnit):
             plt.savefig(os.path.join(self.webdir, f'{histname}_signal.pdf'))
             plt.close()
 
+        web.add_h1("Tagger transformation")
+        anatree = self.global_cfg.main_analysis_tree
+        web.add_text(f"Signal sample: `{anatree.path.replace('$YEAR', str(self.global_cfg.year))}:{anatree.treename}`.")
+        web.add_text(f"Applied selection: `{anatree.selection}`. Tagger name: `{anatree.tagger}`\n")
+        web.add_text(f"Defined WPs: {self.global_cfg.tagger.wps}\n")
+        web.add_text(r"This corresponds to the signal effiency at: {%s}" %
+            ', '.join([f'{wp}: [{lo*100:.1f}\%, {hi*100:.1f}\%]' for wp, (lo, hi) in zip(self.global_cfg.tagger.wps.keys(), sig_effs)]))
+        web.add_text()
+
+        web.add_figure(self.webdir, src='tagger_trans.png', title='tagger transformation map')
+        for histname, desc in zip(['hist', 'xhist'], ['original', 'transformed']):
             web.add_figure(self.webdir, src=f'{histname}_signal.png', title=f'signal distribution on {desc} tagger and WPs')
 
 

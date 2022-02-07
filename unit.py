@@ -51,6 +51,14 @@ class ProcessingUnit(object):
         )
 
 
+    def load_pickle(self, attrname: str):
+        if not os.path.isfile(os.path.join(self.outputdir, attrname + '.pickle')):
+            raise FileNotFoundError('Cannot find ' + os.path.join(self.outputdir, attrname + '.pickle'))
+
+        with open(os.path.join(self.outputdir, attrname + '.pickle'), 'rb') as f:
+            setattr(self, attrname, pickle.load(f))
+
+
     def postprocess(self):
         pass
 
@@ -59,10 +67,16 @@ class ProcessingUnit(object):
         pass
 
 
-    def launch(self):
+    def launch(self, skip_coffea=False):
         r"""Launch the processing unit"""
         self.preprocess()
-        self.run_coffea_job()
+        if not skip_coffea:
+            self.run_coffea_job()
+        else: # skip coffea step
+            if not hasattr(self, 'processor_instance'):
+                self.initalize_processor()
+            self.load_pickle('result')
+
         self.postprocess()
         self.make_webpage()
 

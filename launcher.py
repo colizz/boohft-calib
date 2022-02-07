@@ -57,24 +57,24 @@ def launch_routine(global_cfg):
         if global_cfg.reuse_mc_weight_from_routine is None:
             _logger.info('Launch step 1: reweight total MC to data due to the use of prescaled HT triggers...')
             step_1 = MCReweightUnit(global_cfg, fileset=fileset, workers=workers[0])
-            step_1.launch()
+            step_1.launch(skip_coffea=global_cfg.skip_coffea)
         else:
             _logger.info(f'Skip step 1 and reuse MC reweight factors from routine {global_cfg.reuse_mc_weight_from_routine}')
 
     if run_step[1] == '1':
         _logger.info('Launch step 2: calculate the sfBDT coastline on the target transformed tagger...')
         step_2 = CoastlineUnit(global_cfg, fileset=fileset, workers=workers[1])
-        step_2.launch()
+        step_2.launch(skip_coffea=global_cfg.skip_coffea)
 
     if run_step[2] == '1':
         _logger.info('Launch step 3: derive the template for fit...')
         step_3 = TmplWriterUnit(global_cfg, fileset=fileset, workers=workers[2])
-        step_3.launch()
+        step_3.launch(skip_coffea=global_cfg.skip_coffea)
     
     if run_step[3] == '1':
         _logger.info('Launch step 4: apply the fit to derive SFs, then make plots for the fit...')
         step_4 = FitUnit(global_cfg, fileset=fileset, workers=workers[3])
-        step_4.launch()
+        step_4.launch(skip_coffea=global_cfg.skip_coffea)
 
     # Make navigation webpage
     job_name = global_cfg.routine_name + '_' + str(global_cfg.year)
@@ -95,7 +95,7 @@ def launch_routine(global_cfg):
     _logger.info(f'Job done! Everything write to webpage: {webpage}')
 
 
-def launch(config_path, workers=None, run_step=None, multi_years=None):
+def launch(config_path, workers=None, run_step=None, skip_coffea=None, multi_years=None):
     r"""Launch all steps"""
 
     global_cfg_base = load_global_cfg(config_path)
@@ -103,6 +103,8 @@ def launch(config_path, workers=None, run_step=None, multi_years=None):
         global_cfg_base.workers = workers
     if run_step is not None:
         global_cfg_base.run_step = run_step
+    if skip_coffea is not None:
+        global_cfg_base.skip_coffea = skip_coffea
 
     if multi_years is None: # use the year specified in the config card
         launch_routine(global_cfg_base)
@@ -123,9 +125,12 @@ if __name__ == '__main__':
         help='Number of concurrent workers for the coffea and standalone processor. Will overide the option in base config.')
     parser.add_argument('--run-step', '-s', type=str, default=None,
         help='Four bool digits to control whether or not to run each of the four steps. Will overide the option in base config.')
+    parser.add_argument('--skip-coffea', action='store_true',
+        help='If specified, skip running the coffea step and directly load the existing results (should guarantee that the coffea step has run before). '
+             'Will overide the option in base config.')
     parser.add_argument('--multi-years', '-y', nargs='+', type=str, default=None,
         help='Specify one or multiple year(s) options to run. Will overide the option in the config card.')
     args = parser.parse_args()
 
     # Launch all steps
-    launch(args.config_path, workers=args.workers, run_step=args.run_step, multi_years=args.multi_years)
+    launch(args.config_path, workers=args.workers, run_step=args.run_step, skip_coffea=args.skip_coffea, multi_years=args.multi_years)

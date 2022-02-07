@@ -220,15 +220,6 @@ class TmplWriterUnit(ProcessingUnit):
             os.makedirs(self.webdir)
             
 
-    def load_pickle(self, attrname: str):
-        if not os.path.isfile(os.path.join(self.outputdir, attrname + '.pickle')):
-            _logger.exception('Cannot find ' + os.path.join(self.outputdir, attrname + '.pickle'))
-            raise
-
-        with open(os.path.join(self.outputdir, attrname + '.pickle'), 'rb') as f:
-            setattr(self, attrname, pickle.load(f))
-
-
     def preprocess(self):
         def _check_exists(dirpath, filename, jobname):
             if not os.path.isfile(os.path.join(dirpath, filename)):

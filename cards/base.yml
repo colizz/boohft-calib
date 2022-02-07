@@ -10,6 +10,7 @@ version: v3.0.2
 # overall configuration
 workers: [8, 8, 8, 8]  # number of concurrent workers for the coffea and standalone processor
 run_step: 1111  # four bool digits to control whether or not to run each of the four steps
+skip_coffea: false  # if true, skip running the coffea step and directly load the existing results (should guarantee that the coffea step has run before)
 use_helvetica: auto  # use the Helvetica font in mplhep, works when Helvetica exists in your local system. Support true, false, auto
 
 # 2_coastline
