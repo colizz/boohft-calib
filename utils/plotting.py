@@ -291,7 +291,7 @@ def make_sfbdt_variation_plot(center, errl, errh, c_idx, sf, outputdir, args, pl
         artists = ax.errorbar(xdata, ydata, xerr=xerror, yerr=yerror, fmt='None', ecolor=facecolor, label=label)
         return artists
 
-    if args.use_helvetica:
+    if args.use_helvetica == True or (args.use_helvetica == 'auto' and any(['Helvetica' in font for font in mpl.font_manager.findSystemFonts()])):
         plt.style.use({"font.sans-serif": 'Helvetica'})
 
     # Plot SF points with errorbars
@@ -348,7 +348,7 @@ def make_fit_summary_plots(center, errl, errh, outputdir, args, plot_xticklabels
     x_ticks = np.arange(len(plot_xticklabels))  # the label locations
     width = 0.15  # the width of the bars
 
-    if args.use_helvetica:
+    if args.use_helvetica == True or (args.use_helvetica == 'auto' and any(['Helvetica' in font for font in mpl.font_manager.findSystemFonts()])):
         plt.style.use({"font.sans-serif": 'Helvetica'})
 
     f, ax = plt.subplots(figsize=(10, 10))
