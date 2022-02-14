@@ -73,9 +73,9 @@ class ProcessingUnit(object):
         if not skip_coffea:
             self.run_coffea_job()
         else: # skip coffea step
-            if not hasattr(self, 'processor_instance'):
+            if self.processor_cls is not None:
                 self.initalize_processor()
-            self.load_pickle('result')
+                self.load_pickle('result')
 
         self.postprocess()
         self.make_webpage()
