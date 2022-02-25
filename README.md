@@ -8,7 +8,7 @@ Users should specify in a data card the tagger expression, pre-defined WPs, etc.
 See details in the [example data card](cards/example_bb_PNetXbbVsQCD.yml) for calibrating the ParticleNet XbbVsQCD score.
 
 The introduction of the method can be found in the [latest BTV slides](https://indico.cern.ch/event/1120932/#23-calibration-of-ul20172018-x).
-Detailed documentation is provided in [AN-21-005](https://cms.cern.ch/iCMS/jsp/db_notes/noteInfo.jsp?cmsnoteid=CMS%20AN-2021/005).
+Detailed documentation is provided in [AN-21-005](https://cms.cern.ch/iCMS/jsp/db_notes/noteInfo.jsp?cmsnoteid=CMS%20AN-2021/005) (the current AN is not up to date).
 
 ## Run the tool
 
