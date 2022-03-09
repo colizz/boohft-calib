@@ -156,7 +156,7 @@ class CoastlineUnit(ProcessingUnit):
         df = uproot.lazy(anatree.path.replace("$YEAR", str(self.global_cfg.year)) + ':' + anatree.treename)
         anatree_selection = ak.numexpr.evaluate(anatree.selection, df)
 
-        tagger = df[anatree.tagger][anatree_selection]
+        tagger = ak.numexpr.evaluate(anatree.tagger, df)[anatree_selection]
         weight = ak.numexpr.evaluate(anatree.weight, df)[anatree_selection]
 
         ## Transfrom the tagger to uniform distribution
@@ -344,7 +344,7 @@ class CoastlineUnit(ProcessingUnit):
         web.add_h1("Tagger transformation")
         anatree = self.global_cfg.main_analysis_tree
         web.add_text(f"Signal sample: `{anatree.path.replace('$YEAR', str(self.global_cfg.year))}:{anatree.treename}`.")
-        web.add_text(f"Applied selection: `{anatree.selection}`. Tagger name: `{anatree.tagger}`\n")
+        web.add_text(f"Applied selection: `{anatree.selection}`. Tagger name/expression: `{anatree.tagger}`\n")
         web.add_text(f"Defined WPs: {self.global_cfg.tagger.wps}\n")
         web.add_text(r"This corresponds to the signal effiency at: {%s}" %
             ', '.join([f'{wp}: [{lo*100:.1f}\%, {hi*100:.1f}\%]' for wp, (lo, hi) in zip(self.global_cfg.tagger.wps.keys(), sig_effs)]))

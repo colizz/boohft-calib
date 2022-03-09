@@ -58,7 +58,7 @@ main_analysis_tree:
   ## *NOTE*: should always use parentheses between & and |
   selection: (fj_x_pt>200) & (fj_x_dr_H<0.8)
   
-  ## Name of the same tagger branch defined in this tree
+  ## Name or expression of the same tagger variable defined in this tree
   tagger: fj_x_ParticleNetMD_XbbVsQCD
 
   ## Event weight expression used in the user's analysis
