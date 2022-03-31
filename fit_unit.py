@@ -353,7 +353,7 @@ class FitUnit(ProcessingUnit):
                     if os.path.isfile(orig_path):
                         shutil.copy2(orig_path, os.path.join(webdir_mode, fname)) # copy and rename to append the suffix
                     else:
-                        _logger.error('File ' + orig_path + ' does not exists. Do some fit points fail?')
+                        _logger.error('File ' + orig_path + ' does not exists. This may occur if you choose not to launch the corresponding fit point or the fit fails.')
                     if type == 'figure':
                         web_mode.add_figure(webdir_mode, fname, title)
                     elif type == 'pdf':
@@ -412,7 +412,8 @@ class FitUnit(ProcessingUnit):
                 web_mode.add_text('------------------\n')
 
             if self.global_cfg.show_unce_breakdown:
-                web_mode.add_h1(f'{self.global_cfg.type}-tagging SF uncetainty breakdown for syst. and stat.')
+                title_map = {'bb': 'bb-tagging', 'cc': 'cc-tagging', 'qq': 'light-tagging'}
+                web_mode.add_h1(f'{title_map[self.global_cfg.type]} SF uncetainty breakdown for syst. and stat.')
                 for wp in wps:
                     web_mode.add_h2(f'**{self.global_cfg.default_wp_name_map[wp]}** WP:')
                     web_mode.add_text('Left to right: pT in ' + ', '.join([pt_title(ptmin, ptmax) for ptmin, ptmax in pt_edge_pairs]) + '\n\n')
@@ -424,7 +425,8 @@ class FitUnit(ProcessingUnit):
             
             # make SF plots for varied sfBDT cut
             if self.global_cfg.show_sfbdt_variation:
-                web_mode.add_h1(f'{self.global_cfg.type}-tagging SFs for the variation of sfBDT coastlines')
+                title_map = {'bb': 'bb-tagging', 'cc': 'cc-tagging', 'qq': 'light-tagging'}
+                web_mode.add_h1(f'{title_map[self.global_cfg.type]} SFs for the variation of sfBDT coastlines')
                 for wp in wps:
                     web_mode.add_h2(f'**{self.global_cfg.default_wp_name_map[wp]}** WP:')
                     web_mode.add_text('Left to right: pT in ' + ', '.join([pt_title(ptmin, ptmax) for ptmin, ptmax in pt_edge_pairs]) + '\n\n')
