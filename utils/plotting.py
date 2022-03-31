@@ -270,7 +270,7 @@ def make_sfbdt_variation_plot(center, errl, errh, c_idx, sf, outputdir, args, pl
     Arguments:
         center, errl, errh: list of array of SFs with errorbars
         c_idx, index of the central SF in the list
-        sf: SF type (bb or cc) that controls the color and range of the plot
+        sf: SF type (bb, cc, or qq) that controls the color and range of the plot
     """
     from matplotlib.collections import PatchCollection
     from matplotlib.patches import Rectangle
@@ -338,8 +338,7 @@ def make_fit_summary_plots(center, errl, errh, outputdir, args, plot_xticklabels
     r"""Summarize the SFs in pT and WPs, for a specific fit scheme, in one plot.
 
     Arguments:
-        center, errl, errh: 2D list of array of SFs with errorbars. dim1: pT bins, dim2: WPs
-        sf: SF type (bb or cc) that controls the color and range of the plot
+        center, errl, errh: 2D list of array of SFs with errorbars.
     """
 
     custom_cycler = (cycler(color=['darkblue', 'red', 'green', 'darkorange', 'cyan', 'magenta']) + \

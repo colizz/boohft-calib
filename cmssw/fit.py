@@ -14,7 +14,7 @@ import argparse
 parser = argparse.ArgumentParser('Preprocess ntuples')
 parser.add_argument('inputdir', help='Input directory')
 parser.add_argument('workdir', help='Working directory for the fit')
-parser.add_argument('--type', default=None, choices=['bb', 'cc'], help='bb or cc calibration type')
+parser.add_argument('--type', default=None, choices=['bb', 'cc', 'qq'], help='bb, cc, or qq calibration type')
 parser.add_argument('--mode', default=None, choices=['main', 'sfbdt_rwgt', 'fit_var_rwgt'], help='fit schemes in controlling the nuiences.')
 parser.add_argument('--ext-unce', default=None, help='Extra uncertainty term to run or term to be excluded. e.g. --ext-unce NewTerm1,NewTerm2,~ExcludeTerm1')
 parser.add_argument('--bound', default=None, help='Set the bound of three SFs, e.g. --bound 0.5,2 (which are the default values)')
@@ -23,9 +23,11 @@ parser.add_argument('--run-unce-breakdown', action='store_true', help='Run uncer
 args = parser.parse_args()
 
 if args.type == 'bb':
-    flv_poi1, flv_poi2 = 'flvB', 'flvC'
+    flv_poi1, flv_poi2, flv_poi3 = 'flvB', 'flvC', 'flvL'
 elif args.type == 'cc':
-    flv_poi1, flv_poi2 = 'flvC', 'flvB'
+    flv_poi1, flv_poi2, flv_poi3 = 'flvC', 'flvB', 'flvL'
+elif args.type == 'qq':
+    flv_poi1, flv_poi2, flv_poi3 = 'flvL', 'flvB', 'flvC'
 
 if not os.path.exists(args.workdir):
     os.makedirs(args.workdir)
@@ -44,13 +46,13 @@ cats = [
 
 cb.AddObservations(['*'], [''], ['13TeV'], [''], cats)
 
-bkg_procs = ['flvL']
+bkg_procs = [flv_poi2, flv_poi3]
 cb.AddProcesses(['*'], [''], ['13TeV'], [''], bkg_procs, cats, False)
 
-sig_procs = [flv_poi1, flv_poi2]
+sig_procs = [flv_poi1]
 cb.AddProcesses(['*'], [''], ['13TeV'], [''], sig_procs, cats, True)
 
-all_procs = bkg_procs + sig_procs
+all_procs = sig_procs + bkg_procs
 
 bins = cb.bin_set()
 
@@ -127,11 +129,11 @@ elif args.mode == 'fit_var_rwgt':
 runcmd('''
 cd {workdir} && \
 echo "+++ Converting datacard to workspace +++" && \
-text2workspace.py -m 125 -P HiggsAnalysis.CombinedLimit.TagAndProbeExtendedV2:tagAndProbe SF.txt --PO categories={flv_poi1},{flv_poi2},flvL {ext_po} && \
+text2workspace.py -m 125 -P HiggsAnalysis.CombinedLimit.TagAndProbeExtendedV2:tagAndProbe SF.txt --PO categories={flv_poi1},{flv_poi2},{flv_poi3} {ext_po} && \
 echo "+++ Fitting... +++" && \
 combine -M MultiDimFit -m 125 SF.root --algo=singles --robustFit=1 {ext_fit_options} > fit.log && \
 combine -M FitDiagnostics -m 125 SF.root --saveShapes --saveWithUncertainties --robustFit=1 {ext_fit_options} > /dev/null 2>&1
-'''.format(workdir=args.workdir, flv_poi1=flv_poi1, flv_poi2=flv_poi2, ext_po=ext_po, ext_fit_options=ext_fit_options)
+'''.format(workdir=args.workdir, flv_poi1=flv_poi1, flv_poi2=flv_poi2, flv_poi3=flv_poi3, ext_po=ext_po, ext_fit_options=ext_fit_options)
 )
 
 if args.run_impact:

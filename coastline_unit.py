@@ -86,11 +86,13 @@ class CoastlineCoffeaProcessor(processor.ProcessorABC):
                 # calculate the MC-to-data weigts only for MC
                 mc_weight = self.lookup_mc_weight(f'fj{i}', events_fj[f'fj_{i}_pt'], events_fj['ht'])
                 weight = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeight*{lumi}', events_fj) * mc_weight
-                assert self.global_cfg.type in ['bb', 'cc'], "Calibration type must be 'bb' or 'cc'."
+                assert self.global_cfg.type in ['bb', 'cc', 'qq'], "Calibration type must be 'bb', 'cc', or 'qq'."
                 if self.global_cfg.type == 'bb':
                     flv_sel = ak.numexpr.evaluate(f'fj_{i}_nbhadrons >= 1', events_fj)
                 elif self.global_cfg.type == 'cc':
                     flv_sel = ak.numexpr.evaluate(f'(fj_{i}_nbhadrons == 0) & (fj_{i}_nchadrons >= 1)', events_fj)
+                elif self.global_cfg.type == 'qq':
+                    flv_sel = ak.numexpr.evaluate(f'(fj_{i}_nbhadrons == 0) & (fj_{i}_nchadrons == 0)', events_fj)
             else:
                 weight = ak.ones_like(events_fj.ht)
 

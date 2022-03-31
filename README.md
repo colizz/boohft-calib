@@ -30,7 +30,7 @@ Run the tool in one command, e.g.,
 python launcher.py cards/example_bb_PNetXbbVsQCD.yml
 ```
 
-See `launcher.py` for more information on the command arguments.
+Try `python launcher.py --help` for more information on the command arguments.
 
 Note: the tool uses 8 concurrent workers by default. On lxplus it will run by estimation 4 hrs for an entire routine. Sepcify more workers if you have more CPU resource.
 
@@ -45,7 +45,7 @@ To run on SWAN, click the link, start a SWAN session with LCG96 Python3 stack (4
 ## Configuration card
 
 The configuration card (e.g., the example card `cards/example_bb_PNetXbbVsQCD.yml`) defines everything for a routine. As a brief summary, users should specify
- - the type of calibration: can be `bb` or `cc`;
+ - the type of calibration: can be `bb`, `cc`, or `qq`;
  - the year of UL condition: can be `2016APV`, `2016`, `2017`, or `2018`;
  - jet pT ranges for deriving separate SFs;
  - the tagger information, including the tagger name/expression, the span, and the custom WPs defined in the user's analysis;
@@ -55,6 +55,9 @@ See detailed explanation in the example card [`cards/example_bb_PNetXbbVsQCD.yml
 
 --------
 ## Update notes
+
+v3.0.3 Mar 31, 2022
+ - Implement the qq calibration type
 
 v3.0.2 Feb 5, 2022
  - Implement the year condition for 2016APV and 2016

@@ -309,7 +309,7 @@ class TmplWriterUnit(ProcessingUnit):
             p = self.processor_instance
             plotter_handler = StandaloneMultiThreadedUnit(workers=self.workers, use_unordered_mapping=True)
             flvbin = ['flvL', 'flvB', 'flvC']
-            iflvbin_order = [0, 2, 1] if self.global_cfg.type=='bb' else [0, 1, 2] # e.g. flvL, flvC, flvB for bb
+            iflvbin_order = [0, 2, 1] if self.global_cfg.type=='bb' else [0, 1, 2] if self.global_cfg.type=='cc' else [2, 1, 0] # e.g. flvL, flvC, flvB for bb
             color_mc = sns.color_palette('cubehelix_r', 3)
             year, lumi = self.global_cfg.year, self.global_cfg.lumi_dict[self.global_cfg.year]
 

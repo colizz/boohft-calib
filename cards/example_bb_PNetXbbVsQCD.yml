@@ -5,7 +5,7 @@
 ## Routine name
 routine_name: example_bb_ULNanoV9_PNetXbbVsQCD_ak8
 
-## Type of the tagger, can be 'bb' or 'cc'. This is used in the choice of proxy - e.g. for 'bb' one use
+## Type of the tagger, can be 'bb', 'cc', or 'qq'. This is used in the choice of proxy - e.g. for 'bb' one use
 ## g->bb as the proxy of bb resonance signal and extract the SF from the flavour B component.
 type: bb
 
@@ -53,8 +53,8 @@ main_analysis_tree:
   treename: Events
 
   ## The selection used for this sample applied in the user's analysis. This will ensure us to find the
-  ## correct g->bb (or g->cc) jet phase-space that serves as a reasonable proxy to the resonance signal jets
-  ## under this user-specified selection
+  ## correct g->bb/cc/qq jet phase-space (for bb/cc/qq-type calibration respectively) that serves as a
+  ## reasonable proxy to the resonance signal jets under this user-specified selection
   ## *NOTE*: should always use parentheses between & and |
   selection: (fj_x_pt>200) & (fj_x_dr_H<0.8)
   

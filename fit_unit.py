@@ -81,12 +81,13 @@ class FitUnit(ProcessingUnit):
         self.fit_options = SimpleNamespace( # args for plot maker
             year=self.global_cfg.year,
             lumi=self.global_cfg.lumi_dict[self.global_cfg.year],
-            type=self.global_cfg.type, # bb or cc calibration type
+            type=self.global_cfg.type, # bb, cc, or qq calibration type
             skip_fit=self.global_cfg.skip_fit,
             run_impact_for_central_fit=self.global_cfg.run_impact_for_central_fit,
             use_helvetica=self.global_cfg.use_helvetica,
             color_order=sns.color_palette('cubehelix_r', 3),
-            cat_order=['flvL', 'flvC', 'flvB'] if self.global_cfg.type=='bb' else ['flvL', 'flvB', 'flvC'],
+            cat_order=['flvL', 'flvC', 'flvB'] if self.global_cfg.type=='bb' \
+                else ['flvL', 'flvB', 'flvC'] if self.global_cfg.type=='cc' else ['flvC', 'flvB', 'flvL'],
             unce_list=self.global_cfg.unce_list,
             xlabel=r'$log(m_{SV1,d_{xy}sig\,max}\; /GeV)$',
         )
@@ -177,6 +178,9 @@ class FitUnit(ProcessingUnit):
         elif self.global_cfg.type == 'cc':
             sf_list = ['C', 'B', 'L']
             sf_title = {'C':'cc-tagging SF (`SF_flvC`)', 'B':'bb-mistagging SF (`SF_flvB`)', 'L':'light-mistagging SF (`SF_flvL`)'}
+        elif self.global_cfg.type == 'qq':
+            sf_list = ['L', 'B', 'C']
+            sf_title = {'L':'light-tagging SF (`SF_flvL`)', 'B':'bb-mistagging SF (`SF_flvB`)', 'C':'cc-mistagging SF (`SF_flvC`)'}
         
         def get_dir(mode, wp, pt, bdt, return_list=False):
             r"""Read the list of dir matches the given bdt and pt (wildcard supported)

@@ -67,6 +67,7 @@ unce_list: [pu, fracBB, fracCC, fracLight, psWeightIsr, psWeightFsr, sfBDTRwgt, 
 
 # mapping the tagger name in NanoAOD and NanoHRT tuples
 tagger_name_replace_map:
+  # ParticleNet MD/non-MD
   FatJet_particleNetMD_Xbb: fj_x_ParticleNetMD_Xbb
   FatJet_particleNetMD_Xcc: fj_x_ParticleNetMD_Xcc
   FatJet_particleNetMD_Xqq: fj_x_ParticleNetMD_Xqq
@@ -74,12 +75,22 @@ tagger_name_replace_map:
   FatJet_particleNetMD_XbbVsQCD: fj_x_ParticleNetMD_XbbVsQCD
   FatJet_particleNetMD_XccVsQCD: fj_x_ParticleNetMD_XccVsQCD
   FatJet_particleNetMD_XccOrXqqVsQCD: fj_x_ParticleNetMD_XccOrXqqVsQCD
+  FatJet_particleNetMD_XccOrXqqVsQCD: fj_x_ParticleNetMD_XccOrXqqVsQCD
+  FatJet_particleNet_TvsQCD: fj_x_ParticleNet_TvsQCD
+  FatJet_particleNet_WvsQCD: fj_x_ParticleNet_WvsQCD
+  FatJet_particleNet_ZvsQCD: fj_x_ParticleNet_ZvsQCD
+  # DeepAK8 MD/non-MD
   FatJet_deepTagMD_ZHbbvsQCD: fj_x_DeepAK8MD_ZHbbvsQCD
   FatJet_deepTagMD_ZHccvsQCD: fj_x_DeepAK8MD_ZHccvsQCD
   FatJet_deepTagMD_bbVsLight: fj_x_DeepAK8MD_bbVsLight
+  FatJet_deepTag_TvsQCD: fj_x_DeepAK8_TvsQCD
+  FatJet_deepTag_WvsQCD: fj_x_DeepAK8_WvsQCD
+  FatJet_deepTag_ZvsQCD: fj_x_DeepAK8_ZvsQCD
+  # DeepDoubleX (MD)
   FatJet_btagDDBvLV2: fj_x_btagDDBvLV2
   FatJet_btagDDCvBV2: fj_x_btagDDCvBV2
   FatJet_btagDDCvLV2: fj_x_btagDDCvLV2
+  # others
   FatJet_btagDeepB: fj_x_btagDeepB
   FatJet_btagHbb: fj_x_btagHbb
 
