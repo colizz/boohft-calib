@@ -13,9 +13,10 @@ def lookup_pt_based_weight(weight_map, pt_reweight_edges, jet_idx, jet_pt, jet_v
     flatten_edges = [edge + ivar * jet_var_maxlimit for ivar, var_edges in enumerate(var_edges_list) for edge in var_edges]
 
     # get the 1d index on the flattened factor map
-    pt_pos = np.maximum(np.searchsorted(pt_reweight_edges, jet_pt, side='right') - 1, 0) # note: first bin i.e. pT in [200, 250) has index 0
+    pt_pos = np.maximum(np.searchsorted(pt_reweight_edges, ak.to_numpy(jet_pt), side='right') - 1, 0) # note: first bin i.e. pT in [200, 250) has index 0
+
     reweight_flatten_var = pt_pos * jet_var_maxlimit + np.minimum(jet_var, jet_var_maxlimit)
-    reweight_flatten_pos = np.searchsorted(flatten_edges, reweight_flatten_var, side='right') - 1
+    reweight_flatten_pos = np.searchsorted(flatten_edges, ak.to_numpy(reweight_flatten_var), side='right') - 1
 
     # index the reweight factors
     weight = weight_map_flatten[reweight_flatten_pos]
