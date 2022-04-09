@@ -85,7 +85,7 @@ class FitUnit(ProcessingUnit):
             skip_fit=self.global_cfg.skip_fit,
             run_impact_for_central_fit=self.global_cfg.run_impact_for_central_fit,
             use_helvetica=self.global_cfg.use_helvetica,
-            color_order=sns.color_palette('cubehelix_r', 3),
+            color_order=sns.color_palette('cubehelix', 3),
             cat_order=['flvL', 'flvC', 'flvB'] if self.global_cfg.type=='bb' \
                 else ['flvL', 'flvB', 'flvC'] if self.global_cfg.type=='cc' else ['flvC', 'flvB', 'flvL'],
             unce_list=self.global_cfg.unce_list,
