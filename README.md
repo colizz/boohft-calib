@@ -19,10 +19,11 @@ First set up the environment. We recommand to use Miniconda:
 wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 bash Miniconda3-latest-Linux-x86_64.sh -b -p ./miniconda  # for test: put the miniconda folder here
 source miniconda/bin/activate
-# install additional packages
-pip install coffea uproot awkward lz4 xxhash numexpr PyYAML seaborn
 # clone the repo
 git clone https://github.com/colizz/boohft-calib.git && cd boohft-calib
+# install packages
+conda env create -f conda_env.yml
+conda activate boohft-calib
 ```
 
 Run the tool in one command, e.g.,
