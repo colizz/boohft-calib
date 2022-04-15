@@ -28,7 +28,7 @@ import os
 
 from unit import ProcessingUnit
 from utils.web_maker import WebMaker
-from utils.tools import lookup_pt_based_weight, parse_tagger_expr
+from utils.tools import lookup_pt_based_weight, parse_tagger_expr, eval_expr
 from utils.fast_splines import interp2d
 from logger import _logger
 
@@ -156,10 +156,10 @@ class CoastlineUnit(ProcessingUnit):
         ## 1. Read the tagger array from the main analysis signal tree
         anatree = self.global_cfg.main_analysis_tree
         df = uproot.lazy(anatree.path.replace("$YEAR", str(self.global_cfg.year)) + ':' + anatree.treename)
-        anatree_selection = ak.numexpr.evaluate(anatree.selection, df)
+        anatree_selection = eval_expr(anatree.selection, df)
 
-        tagger = ak.numexpr.evaluate(anatree.tagger, df)[anatree_selection]
-        weight = ak.numexpr.evaluate(anatree.weight, df)[anatree_selection]
+        tagger = eval_expr(anatree.tagger, df)[anatree_selection]
+        weight = eval_expr(anatree.weight, df)[anatree_selection]
 
         ## Transfrom the tagger to uniform distribution
         tmin, tmax = self.global_cfg.tagger.span

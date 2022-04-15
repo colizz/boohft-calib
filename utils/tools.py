@@ -41,3 +41,21 @@ def parse_tagger_expr(tagger_name_replace_map, expr):
     for var, var_replace in replace_dict.items():
         expr = expr.replace(var, var_replace)
     return expr
+
+
+def eval_expr(expr, events):
+    """A function that can do `eval` to the awkward array, immitating the behavior of `eval` in pandas."""
+    
+    def get_variable_names(expr, exclude=['awkward', 'ak', 'np', 'numpy', 'math']):
+        """Extract variables in the expr"""
+        import ast
+        root = ast.parse(expr)
+        return sorted({node.id for node in ast.walk(root) if isinstance(node, ast.Name) and not node.id.startswith('_')} - set(exclude))
+
+    try:
+        return ak.numexpr.evaluate(expr, events)
+    except:
+        import math
+        tmp = {k: events[k] for k in get_variable_names(expr)}
+        tmp.update({'math': math, 'numpy': np, 'np': np, 'awkward': ak, 'ak': ak})
+        return eval(expr, tmp)
