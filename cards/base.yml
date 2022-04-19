@@ -60,7 +60,7 @@ hlt_branches:
   "2018": [HLT_PFHT180, HLT_PFHT250, HLT_PFHT370, HLT_PFHT430, HLT_PFHT510, HLT_PFHT590, HLT_PFHT680, HLT_PFHT780, HLT_PFHT890, HLT_PFHT1050, HLT_PFHT350]
 
 # fine pt bins for reweighting
-rwgt_pt_bins: [[200, 250],[250, 300], [350, 400], [400, 450], [450, 500], [500, 550], [550, 600], [600, 700], [700, 800], [800, 100000]]
+rwgt_pt_bins: [[200, 250], [250, 300], [300, 350], [350, 400], [400, 450], [450, 500], [500, 550], [550, 600], [600, 700], [700, 800], [800, 100000]]
 
 # uncertainty list to run
 unce_list: [pu, fracBB, fracCC, fracLight, psWeightIsr, psWeightFsr, sfBDTRwgt, fitVarRwgt]
