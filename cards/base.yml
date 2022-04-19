@@ -1,7 +1,7 @@
 ## This card includes all base configurations for the tool
 ## Please do not modify the content here but instead rewrite the item in the calibration config cards
 
-version: v3.0.3
+version: v3.0.4
 
 ##############################
 ## Configuration on modules ##

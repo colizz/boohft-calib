@@ -57,6 +57,10 @@ See detailed explanation in the example card [`cards/example_bb_PNetXbbVsQCD.yml
 --------
 ## Update notes
 
+v3.0.4 April 19, 2022
+ - Feature improved: allow expression to parse awkward-array indexing
+ - Reweight binning bug fix
+
 v3.0.3 Mar 31, 2022
  - Implement the qq calibration type
 
