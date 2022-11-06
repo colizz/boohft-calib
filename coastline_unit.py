@@ -153,41 +153,60 @@ class CoastlineUnit(ProcessingUnit):
 
 
     def preprocess(self):
-        ## 1. Read the tagger array from the main analysis signal tree
+        ## 1. Obtain tagger shape from the provided signal analysis ROOT file
         anatree = self.global_cfg.main_analysis_tree
-        df = uproot.lazy(anatree.path.replace("$YEAR", str(self.global_cfg.year)) + ':' + anatree.treename)
-        anatree_selection = eval_expr(anatree.selection, df)
 
-        tagger = eval_expr(anatree.tagger, df)[anatree_selection]
-        weight = eval_expr(anatree.weight, df)[anatree_selection]
+        if not hasattr(anatree, 'provide_tagger_array') or anatree.provide_tagger_array:
+            # read the tagger array from the main analysis signal tree
+            self.provide_tagger_array = True
+            df = uproot.lazy(anatree.path.replace("$YEAR", str(self.global_cfg.year)) + ':' + anatree.treename)
+            anatree_selection = eval_expr(anatree.selection, df)
 
-        ## Transfrom the tagger to uniform distribution
-        tmin, tmax = self.global_cfg.tagger.span
-        hist = bh.Histogram(bh.axis.Regular(1000, tmin, tmax), storage=bh.storage.Weight())
-        hist.fill(tagger, weight=weight)
+            tagger = eval_expr(anatree.tagger, df)[anatree_selection]
+            weight = eval_expr(anatree.weight, df)[anatree_selection]
+
+            ## Transfrom the tagger to uniform distribution
+            tmin, tmax = self.global_cfg.tagger.span
+
+            nbin_hist = 1000
+            hist = bh.Histogram(bh.axis.Regular(nbin_hist, tmin, tmax), storage=bh.storage.Weight())
+            hist.fill(tagger, weight=weight)
+
+        else:
+            # use provided histogram as the direct template
+            self.provide_tagger_array = False
+            tmin, tmax = self.global_cfg.tagger.span
+            hist = uproot.open(anatree.path.replace("$YEAR", str(self.global_cfg.year)) + ':' + anatree.histname).to_boost()
+            nbin_hist = hist.axes[0].size
+            assert tmin == hist.axes[0].edges[0] and tmax == hist.axes[0].edges[-1], \
+                f"Provide tagger shape histogram has range [{hist.axes[0].edges[0]}, {hist.axes[0].edges[-1]}] which does not match with the tagger span."
 
         # cumulative distribution of the tagger:
-        x = np.linspace(tmin, tmax, 1000 + 1)
-        y = np.maximum(hist.view().value, 1e-5)
+        x = np.linspace(tmin, tmax, nbin_hist + 1)
+        y = np.maximum(hist.values(), 1e-5)
         y_cum = np.insert(np.cumsum(y / sum(y)), 0, 0.)
         # plt.plot(x, y_cum); plt.show()
 
         # the tagger tranformation map is derived from the cumulative sum
         self.xtagger_map = scipy.interpolate.interp1d(x, y_cum, kind='cubic')
 
-        # also store the signal hist info for later plot making
-        xtagger = self.xtagger_map(tagger)
-        hist = bh.Histogram(bh.axis.Regular(50, tmin, tmax), storage=bh.storage.Weight())
-        hist.fill(tagger, weight=weight)
-        xhist = bh.Histogram(bh.axis.Regular(50, 0., 1.), storage=bh.storage.Weight())
-        xhist.fill(xtagger, weight=weight)
-        self.signal_hist_info = {
-            't_x': x, 't_y': y_cum, 'hist': hist, 'xhist': xhist
-        }
+        if self.provide_tagger_array:
+            # also store the signal hist info for later plot making
+            xtagger = self.xtagger_map(tagger)
+            hist = bh.Histogram(bh.axis.Regular(50, tmin, tmax), storage=bh.storage.Weight())
+            hist.fill(tagger, weight=weight)
+            xhist = bh.Histogram(bh.axis.Regular(50, 0., 1.), storage=bh.storage.Weight())
+            xhist.fill(xtagger, weight=weight)
+            self.signal_hist_info = {
+                't_x': x, 't_y': y_cum, 'hist': hist, 'xhist': xhist
+            }
+        else:
+            self.signal_hist_info = {
+                't_x': x, 't_y': y_cum, 'hist': hist, 'xhist': None
+            }
 
         with open(os.path.join(self.outputdir, 'xtagger_map.pickle'), 'wb') as fw:
             pickle.dump(self.xtagger_map, fw)
-
 
         ## 2. Read the reweight map
         if self.global_cfg.reuse_mc_weight_from_routine is not None:
@@ -328,7 +347,8 @@ class CoastlineUnit(ProcessingUnit):
             f, ax = plt.subplots(figsize=(10, 10))
             hep.cms.label(data=True, llabel='Preliminary', year=year, ax=ax, rlabel=r'%s $fb^{-1}$ (13 TeV)' % lumi, fontname='sans-serif')
             h = self.signal_hist_info[histname]
-            hep.histplot(h.values(), yerr=np.sqrt(h.variances()), bins=h.axes[0].edges, label='Signal', color=color)
+            if h is not None:
+                hep.histplot(h.values(), yerr=np.sqrt(h.variances()), bins=h.axes[0].edges, label='Signal', color=color)
             ax.set_xlim(xlims); ax.set_ylim(0, ax.get_ylim()[1] * 1.5)
             ymax = ax.get_ylim()[1]
             for wp, (lo, hi) in self.global_cfg.tagger.wps.items():
@@ -339,18 +359,24 @@ class CoastlineUnit(ProcessingUnit):
                 ax.text((lo + hi)/2, 0.82 * ymax, wp, ha='center', fontweight='bold')
             ax.set_xlabel(xtitle); ax.set_ylabel('Events / bin')
             ax.text(0.05, 0.92, f'Signal distribution on {desc} tagger', transform=ax.transAxes)
+            if h is None:
+                 ax.text(0.4, 0.5, 'Not valid', transform=ax.transAxes)
             plt.savefig(os.path.join(self.webdir, f'{histname}_signal.png'))
             plt.savefig(os.path.join(self.webdir, f'{histname}_signal.pdf'))
             plt.close()
 
         web.add_h1("Tagger transformation")
         anatree = self.global_cfg.main_analysis_tree
-        web.add_text(f"Signal sample: `{anatree.path.replace('$YEAR', str(self.global_cfg.year))}:{anatree.treename}`.")
-        web.add_text(f"Applied selection: `{anatree.selection}`. Tagger name/expression: `{anatree.tagger}`\n")
-        web.add_text(f"Defined WPs: {self.global_cfg.tagger.wps}\n")
-        web.add_text(r"This corresponds to the signal effiency at: {%s}" %
-            ', '.join([f'{wp}: [{lo*100:.1f}\%, {hi*100:.1f}\%]' for wp, (lo, hi) in zip(self.global_cfg.tagger.wps.keys(), sig_effs)]))
-        web.add_text()
+        if self.provide_tagger_array:
+            web.add_text(f"Signal sample: `{anatree.path.replace('$YEAR', str(self.global_cfg.year))}:{anatree.treename}`.")
+            web.add_text(f"Applied selection: `{anatree.selection}`. Tagger name/expression: `{anatree.tagger}`\n")
+            web.add_text(f"Defined WPs: {self.global_cfg.tagger.wps}\n")
+            web.add_text(r"This corresponds to the signal effiency at: {%s}" %
+                ', '.join([f'{wp}: [{lo*100:.1f}\%, {hi*100:.1f}\%]' for wp, (lo, hi) in zip(self.global_cfg.tagger.wps.keys(), sig_effs)]))
+            web.add_text()
+        else:
+            web.add_text(f"Provided signal tagger shape in histogram: `{anatree.path.replace('$YEAR', str(self.global_cfg.year))}:{anatree.histname}`.")
+            web.add_text()
 
         web.add_figure(self.webdir, src='tagger_trans.png', title='tagger transformation map')
         for histname, desc in zip(['hist', 'xhist'], ['original', 'transformed']):
