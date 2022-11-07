@@ -32,6 +32,7 @@ from utils.web_maker import WebMaker
 from utils.tools import lookup_pt_based_weight, parse_tagger_expr
 from utils.plotting import make_generic_mc_data_plots
 from utils.bh_tools import bh_to_uproot3, fix_bh, scale_bh
+from utils.xgb_tools import XGBEnsemble
 from logger import _logger
 
 
@@ -57,6 +58,11 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
             'fracLightUp', 'fracLightDown', 'psWeightIsrUp', 'psWeightIsrDown', 'psWeightFsrUp', 'psWeightFsrDown', \
             'sfBDTRwgtUp', 'sfBDTRwgtDown', 'fitVarRwgtUp', 'fitVarRwgtDown'
         ]
+        if hasattr(self.global_cfg, 'custom_sfbdt_path'):
+            self.xgb = XGBEnsemble(
+                [self.global_cfg.custom_sfbdt_path + '.%d' % i for i in range(self.global_cfg.custom_sfbdt_kfold)],
+                ['fj_2_tau21', 'fj_2_sj1_rawmass', 'fj_2_sj2_rawmass', 'fj_2_ntracks_sv12', 'fj_2_sj1_sv1_pt', 'fj_2_sj2_sv1_pt'],
+            )
 
         dataset = hist.Cat("dataset", "dataset")
         flv_bin = hist.Bin('flv', 'flv', [-.5, .5, 1.5, 2.5]) # three bins for flvL=0, flvB=1, flvC=2
@@ -106,7 +112,7 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
         lumi = self.global_cfg.lumi_dict[self.global_cfg.year]
 
         for i in '12': # jet index
-            events_fj = events[(presel) & (events[f'fj_{i}_is_qualified'])]
+            events_fj = events[(presel) & (events[f'fj_{i}_is_qualified']) & (ak.numexpr.evaluate(self.global_cfg.custom_selection.replace('fj_x', f'fj_{i}'), events))]
 
             # calculate bin variables
             if is_mc:
@@ -121,7 +127,18 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
             )
             logmsv = np.log(np.maximum(msv, 1e-20))
             pt = events_fj[f'fj_{i}_pt']
-            sfbdt = events_fj[f'fj_{i}_sfBDT']
+            if hasattr(self.global_cfg, 'custom_sfbdt_path'):
+                sfbdt_inputs = {
+                    'fj_2_tau21': events_fj[f'fj_{i}_tau21'],
+                    'fj_2_sj1_rawmass': events_fj[f'fj_{i}_sj1_rawmass'],
+                    'fj_2_sj2_rawmass': events_fj[f'fj_{i}_sj2_rawmass'],
+                    'fj_2_ntracks_sv12': events_fj[f'fj_{i}_ntracks_sv12'],
+                    'fj_2_sj1_sv1_pt': events_fj[f'fj_{i}_sj1_sv1_pt'],
+                    'fj_2_sj2_sv1_pt': events_fj[f'fj_{i}_sj2_sv1_pt'],
+                }
+                sfbdt = ak.Array(self.xgb.eval(sfbdt_inputs, model_idx=(events_fj.event % self.global_cfg.custom_sfbdt_kfold)))
+            else:
+                sfbdt = events_fj[f'fj_{i}_sfBDT']
             tagger = ak.numexpr.evaluate(self.tagger_expr.replace('fj_x', f'fj_{i}'), events_fj)
             xtagger = self.xtagger_map(tagger)
 

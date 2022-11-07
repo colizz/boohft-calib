@@ -30,6 +30,7 @@ from unit import ProcessingUnit
 from utils.web_maker import WebMaker
 from utils.tools import lookup_pt_based_weight, parse_tagger_expr, eval_expr
 from utils.fast_splines import interp2d
+from utils.xgb_tools import XGBEnsemble
 from logger import _logger
 
 
@@ -45,6 +46,11 @@ class CoastlineCoffeaProcessor(processor.ProcessorABC):
 
         self.tagger_expr = parse_tagger_expr(global_cfg.tagger_name_replace_map, global_cfg.tagger.expr)
         self.lookup_mc_weight = partial(lookup_pt_based_weight, self.weight_map, self.pt_reweight_edges, jet_var_maxlimit=2500)
+        if hasattr(self.global_cfg, 'custom_sfbdt_path'):
+            self.xgb = XGBEnsemble(
+                [self.global_cfg.custom_sfbdt_path + '.%d' % i for i in range(self.global_cfg.custom_sfbdt_kfold)],
+                ['fj_2_tau21', 'fj_2_sj1_rawmass', 'fj_2_sj2_rawmass', 'fj_2_ntracks_sv12', 'fj_2_sj1_sv1_pt', 'fj_2_sj2_sv1_pt'],
+            )
 
         dataset = hist.Cat("dataset", "dataset")
 
@@ -79,7 +85,7 @@ class CoastlineCoffeaProcessor(processor.ProcessorABC):
         lumi = self.global_cfg.lumi_dict[self.global_cfg.year]
 
         for i in '12': # jet index
-            events_fj = events[(presel) & (events[f'fj_{i}_is_qualified'])]
+            events_fj = events[(presel) & (events[f'fj_{i}_is_qualified']) & (ak.numexpr.evaluate(self.global_cfg.custom_selection.replace('fj_x', f'fj_{i}'), events))]
 
             # calculate weights and flavour variables
             if is_mc:
@@ -97,13 +103,25 @@ class CoastlineCoffeaProcessor(processor.ProcessorABC):
                 weight = ak.ones_like(events_fj.ht)
 
             # fill into histograms for each WP (range choices on tagger), MC only, flavour selection applied
+            if hasattr(self.global_cfg, 'custom_sfbdt_path'):
+                sfbdt_inputs = {
+                    'fj_2_tau21': events_fj[f'fj_{i}_tau21'],
+                    'fj_2_sj1_rawmass': events_fj[f'fj_{i}_sj1_rawmass'],
+                    'fj_2_sj2_rawmass': events_fj[f'fj_{i}_sj2_rawmass'],
+                    'fj_2_ntracks_sv12': events_fj[f'fj_{i}_ntracks_sv12'],
+                    'fj_2_sj1_sv1_pt': events_fj[f'fj_{i}_sj1_sv1_pt'],
+                    'fj_2_sj2_sv1_pt': events_fj[f'fj_{i}_sj2_sv1_pt'],
+                }
+                sfbdt = ak.Array(self.xgb.eval(sfbdt_inputs, model_idx=(events_fj.event % self.global_cfg.custom_sfbdt_kfold)))
+            else:
+                sfbdt = events_fj[f'fj_{i}_sfBDT']
             if is_mc:
                 tagger_flv_sel = ak.numexpr.evaluate(self.tagger_expr.replace('fj_x', f'fj_{i}'), events_fj[flv_sel])
                 xtagger_flv_sel = self.xtagger_map(tagger_flv_sel)
                 out[f'h2d_grid'].fill(
                     dataset=dataset,
                     pt=events_fj[f'fj_{i}_pt'][flv_sel],
-                    sfbdt=events_fj[f'fj_{i}_sfBDT'][flv_sel],
+                    sfbdt=sfbdt[flv_sel],
                     xtagger=xtagger_flv_sel,
                     weight=weight[flv_sel],
                 )
@@ -113,7 +131,7 @@ class CoastlineCoffeaProcessor(processor.ProcessorABC):
                 dataset=dataset,
                 jetidx=i,
                 pt=events_fj[f'fj_{i}_pt'],
-                sfbdt=events_fj[f'fj_{i}_sfBDT'],
+                sfbdt=sfbdt,
                 weight=weight,
             )
 

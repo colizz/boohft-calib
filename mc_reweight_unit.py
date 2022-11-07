@@ -79,8 +79,8 @@ class MCReweightCoffeaProcessor(processor.ProcessorABC):
         is_mc = dataset != 'jetht'
 
         presel = ak.numexpr.evaluate('passmetfilters & (' + '|'.join(self.global_cfg.hlt_branches[self.global_cfg.year]) + ')', events)
-        events_fj1 = events[(presel) & (events.fj_1_is_qualified)]
-        events_fj2 = events[(presel) & (events.fj_2_is_qualified)]
+        events_fj1 = events[(presel) & (events.fj_1_is_qualified) & (ak.numexpr.evaluate(self.global_cfg.custom_selection.replace('fj_x', 'fj_1'), events))]
+        events_fj2 = events[(presel) & (events.fj_2_is_qualified) & (ak.numexpr.evaluate(self.global_cfg.custom_selection.replace('fj_x', 'fj_2'), events))]
         lumi = self.global_cfg.lumi_dict[self.global_cfg.year]
 
         for ptmin, ptmax in self.global_cfg.rwgt_pt_bins:
