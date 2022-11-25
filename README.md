@@ -57,6 +57,9 @@ See detailed explanation in the example card [`cards/example_bb_PNetXbbVsQCD.yml
 --------
 ## Update notes
 
+v3.0.5 November 25, 2022
+ - Feature: allow using custom sfBDT models to replace the defalt one
+
 v3.0.4 April 19, 2022
  - Feature improved: allow expression to parse awkward-array indexing
  - Reweight binning bug fix
