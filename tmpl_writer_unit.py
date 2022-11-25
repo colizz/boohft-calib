@@ -136,7 +136,7 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
                     'fj_2_sj1_sv1_pt': events_fj[f'fj_{i}_sj1_sv1_pt'],
                     'fj_2_sj2_sv1_pt': events_fj[f'fj_{i}_sj2_sv1_pt'],
                 }
-                sfbdt = ak.Array(self.xgb.eval(sfbdt_inputs, model_idx=(events_fj.event % self.global_cfg.custom_sfbdt_kfold)))
+                sfbdt = ak.Array(self.xgb.eval(sfbdt_inputs))
             else:
                 sfbdt = events_fj[f'fj_{i}_sfBDT']
             tagger = ak.numexpr.evaluate(self.tagger_expr.replace('fj_x', f'fj_{i}'), events_fj)

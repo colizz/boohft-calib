@@ -19,7 +19,7 @@ class XGBEnsemble:
         self.var_list = var_list
         print('Load XGBoost models:\n  %s, \ninput variables:\n  %s' % ('\n  '.join(model_files), str(var_list)))
 
-    def eval(self, inputs, model_idx=None):
+    def eval(self, inputs):
         dmat = xgb.DMatrix(np.array([inputs[k] for k in self.var_list]).T, feature_names=self.var_list)
         preds = np.array([bst.predict(dmat) for bst in self.bst_list])
         return preds.sum(axis=0) / len(self.bst_list)
