@@ -13,6 +13,10 @@ run_step: 1111  # four bool digits to control whether or not to run each of the 
 skip_coffea: false  # if true, skip running the coffea step and directly load the existing results (should guarantee that the coffea step has run before)
 use_helvetica: auto  # use the Helvetica font in mplhep, works when Helvetica exists in your local system. Support true, false, auto
 
+custom_selection: null  # customized event selection, if specified. ('fj_x' is a placeholder of 'fj_1' and 'fj_2')
+custom_sfbdt_path: null  # advanced usage: customized sfBDT model to replace the default one
+custom_sfbdt_kfold: null  # advanced usage: number of fold of the customized sfBDT model
+
 # 2_coastline
 reuse_mc_weight_from_routine: null  # if specified, reuse the MC reweight factors from a previous routine. String format same to dirname: {routine_name}_{year}
 

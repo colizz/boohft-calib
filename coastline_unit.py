@@ -46,7 +46,7 @@ class CoastlineCoffeaProcessor(processor.ProcessorABC):
 
         self.tagger_expr = parse_tagger_expr(global_cfg.tagger_name_replace_map, global_cfg.tagger.expr)
         self.lookup_mc_weight = partial(lookup_pt_based_weight, self.weight_map, self.pt_reweight_edges, jet_var_maxlimit=2500)
-        if hasattr(self.global_cfg, 'custom_sfbdt_path'):
+        if self.global_cfg.custom_sfbdt_path is not None:
             self.xgb = XGBEnsemble(
                 [self.global_cfg.custom_sfbdt_path + '.%d' % i for i in range(self.global_cfg.custom_sfbdt_kfold)],
                 ['fj_2_tau21', 'fj_2_sj1_rawmass', 'fj_2_sj2_rawmass', 'fj_2_ntracks_sv12', 'fj_2_sj1_sv1_pt', 'fj_2_sj2_sv1_pt'],
@@ -85,7 +85,8 @@ class CoastlineCoffeaProcessor(processor.ProcessorABC):
         lumi = self.global_cfg.lumi_dict[self.global_cfg.year]
 
         for i in '12': # jet index
-            events_fj = events[(presel) & (events[f'fj_{i}_is_qualified']) & (ak.numexpr.evaluate(self.global_cfg.custom_selection.replace('fj_x', f'fj_{i}'), events))]
+            custom_sel = ak.numexpr.evaluate(self.global_cfg.custom_selection.replace('fj_x', f'fj_{i}'), events) if self.global_cfg.custom_selection is not None else ak.ones_like(presel, dtype=bool)
+            events_fj = events[(presel) & (events[f'fj_{i}_is_qualified']) & (custom_sel)]
 
             # calculate weights and flavour variables
             if is_mc:
@@ -103,7 +104,7 @@ class CoastlineCoffeaProcessor(processor.ProcessorABC):
                 weight = ak.ones_like(events_fj.ht)
 
             # fill into histograms for each WP (range choices on tagger), MC only, flavour selection applied
-            if hasattr(self.global_cfg, 'custom_sfbdt_path'):
+            if self.global_cfg.custom_sfbdt_path is not None:
                 sfbdt_inputs = {
                     'fj_2_tau21': events_fj[f'fj_{i}_tau21'],
                     'fj_2_sj1_rawmass': events_fj[f'fj_{i}_sj1_rawmass'],
