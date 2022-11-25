@@ -146,7 +146,7 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
             weight = {}
             if is_mc:
                 mc_weight = self.lookup_mc_weight(f'fj{i}', events_fj[f'fj_{i}_pt'], events_fj['ht'])
-                sfbdt_weight = self.lookup_sfbdt_weight(f'fj{i}', events_fj[f'fj_{i}_pt'], events_fj[f'fj_{i}_sfBDT'])
+                sfbdt_weight = self.lookup_sfbdt_weight(f'fj{i}', events_fj[f'fj_{i}_pt'], sfbdt)
                 weight['nominal'] = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeight*{lumi}', events_fj) * mc_weight
                 weight['fracBCLUp'] = weight['nominal'] * ak.numexpr.evaluate(
                     f'(fj_{i}_nbhadrons>=1) * (1.2*(fj_{i}_nbhadrons>1) + 1.0*(fj_{i}_nbhadrons<=1)) + ' + \
