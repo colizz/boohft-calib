@@ -148,7 +148,8 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
             if is_mc:
                 mc_weight = self.lookup_mc_weight(f'fj{i}', events_fj[f'fj_{i}_pt'], events_fj['ht'])
                 sfbdt_weight = self.lookup_sfbdt_weight(f'fj{i}', events_fj[f'fj_{i}_pt'], sfbdt)
-                weight['nominal'] = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeight*{lumi}', events_fj) * mc_weight
+                weight_base = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeight*{lumi}', events_fj)
+                weight['nominal'] = weight_base * mc_weight
                 weight['fracBCLUp'] = weight['nominal'] * ak.numexpr.evaluate(
                     f'(fj_{i}_nbhadrons>=1) * (1.2*(fj_{i}_nbhadrons>1) + 1.0*(fj_{i}_nbhadrons<=1)) + ' + \
                     f'((fj_{i}_nbhadrons==0) & (fj_{i}_nchadrons>=1)) * (1.2*(fj_{i}_nchadrons>1) + 1.0*(fj_{i}_nchadrons<=1)) + ' + \
@@ -161,11 +162,11 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
                 )
                 weight['puUp'] = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeightUp*{lumi}', events_fj) * mc_weight
                 weight['puDown'] = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeightDown*{lumi}', events_fj) * mc_weight
-                if 'PSWeight' in events_fj and len(events_fj.PSWeight[0]) == 4:
-                    weight['psWeightIsrUp'] = weight['nominal'] * events_fj.PSWeight[:,2]
-                    weight['psWeightIsrDown'] = weight['nominal'] * events_fj.PSWeight[:,0]
-                    weight['psWeightFsrUp'] = weight['nominal'] * events_fj.PSWeight[:,3]
-                    weight['psWeightFsrDown'] = weight['nominal'] * events_fj.PSWeight[:,1]
+                if hasattr(events_fj, 'PSWeight') and len(events_fj.PSWeight[0]) == 4:
+                    weight['psWeightIsrUp'] = weight_base * self.lookup_mc_weight(f'fj{i}', events_fj[f'fj_{i}_pt'], events_fj['ht'], read_suffix='_psWeightIsrUp') * events_fj.PSWeight[:,2]
+                    weight['psWeightIsrDown'] =  weight_base * self.lookup_mc_weight(f'fj{i}', events_fj[f'fj_{i}_pt'], events_fj['ht'], read_suffix='_psWeightIsrDown') * events_fj.PSWeight[:,0]
+                    weight['psWeightFsrUp'] =  weight_base * self.lookup_mc_weight(f'fj{i}', events_fj[f'fj_{i}_pt'], events_fj['ht'], read_suffix='_psWeightFsrUp') * events_fj.PSWeight[:,3]
+                    weight['psWeightFsrDown'] =  weight_base * self.lookup_mc_weight(f'fj{i}', events_fj[f'fj_{i}_pt'], events_fj['ht'], read_suffix='_psWeightFsrDown') * events_fj.PSWeight[:,1]
                 else:
                     weight['psWeightIsrUp'] = weight['psWeightIsrDown'] = weight['psWeightFsrUp'] = weight['psWeightFsrDown'] = weight['nominal']
                 weight['sfBDTRwgtUp'] = weight['nominal'] * sfbdt_weight

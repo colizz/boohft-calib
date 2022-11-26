@@ -38,35 +38,37 @@ class MCReweightCoffeaProcessor(processor.ProcessorABC):
         def linspace_bin(start, end, width=50):
             return hist.Bin('ht', 'ht', (end - start) // width, start, end)
 
-        self._accumulator = processor.dict_accumulator({
-            'ht_fj1_pt200to250': hist.Hist('Counts', dataset, linspace_bin(250, 1250)),
-            'ht_fj1_pt250to300': hist.Hist('Counts', dataset, linspace_bin(350, 1400)),
-            'ht_fj1_pt300to350': hist.Hist('Counts', dataset, linspace_bin(400, 1600)),
-            'ht_fj1_pt350to400': hist.Hist('Counts', dataset, linspace_bin(450, 1700)),
-            'ht_fj1_pt400to450': hist.Hist('Counts', dataset, linspace_bin(500, 1800)),
-            'ht_fj1_pt450to500': hist.Hist('Counts', dataset, linspace_bin(550, 1900)),
-            'ht_fj1_pt500to550': hist.Hist('Counts', dataset, linspace_bin(600, 1900)),
-            'ht_fj1_pt550to600': hist.Hist('Counts', dataset, linspace_bin(650, 2000)),
-            'ht_fj1_pt600to700': hist.Hist('Counts', dataset, linspace_bin(700, 2100)),
-            'ht_fj1_pt700to800': hist.Hist('Counts', dataset, linspace_bin(800, 2200)),
-            'ht_fj1_pt800to100000': hist.Hist('Counts', dataset, linspace_bin(1000, 2400)),
-            
-            'ht_fj2_pt200to250': hist.Hist('Counts', dataset, linspace_bin(250, 1500)),
-            'ht_fj2_pt250to300': hist.Hist('Counts', dataset, linspace_bin(350, 1600)),
-            'ht_fj2_pt300to350': hist.Hist('Counts', dataset, linspace_bin(400, 1800)),
-            'ht_fj2_pt350to400': hist.Hist('Counts', dataset, linspace_bin(450, 2000)),
-            'ht_fj2_pt400to450': hist.Hist('Counts', dataset, linspace_bin(500, 2200)),
-            'ht_fj2_pt450to500': hist.Hist('Counts', dataset, linspace_bin(550, 2400)),
-            'ht_fj2_pt500to550': hist.Hist('Counts', dataset, linspace_bin(650, 2400)),
-            'ht_fj2_pt550to600': hist.Hist('Counts', dataset, linspace_bin(750, 2400)),
-            'ht_fj2_pt600to700': hist.Hist('Counts', dataset, linspace_bin(850, 2400)),
-            'ht_fj2_pt700to800': hist.Hist('Counts', dataset, linspace_bin(1000, 2400)),
-            'ht_fj2_pt800to100000': hist.Hist('Counts', dataset, linspace_bin(1200, 2400)),
+        _hists = {}
+        for suffix in ['', '_psWeightIsrUp', '_psWeightIsrDown', '_psWeightFsrUp', '_psWeightFsrDown']:
+            _hists.update({
+                f'ht_fj1_pt200to250{suffix}': hist.Hist('Counts', dataset, linspace_bin(250, 1250)),
+                f'ht_fj1_pt250to300{suffix}': hist.Hist('Counts', dataset, linspace_bin(350, 1400)),
+                f'ht_fj1_pt300to350{suffix}': hist.Hist('Counts', dataset, linspace_bin(400, 1600)),
+                f'ht_fj1_pt350to400{suffix}': hist.Hist('Counts', dataset, linspace_bin(450, 1700)),
+                f'ht_fj1_pt400to450{suffix}': hist.Hist('Counts', dataset, linspace_bin(500, 1800)),
+                f'ht_fj1_pt450to500{suffix}': hist.Hist('Counts', dataset, linspace_bin(550, 1900)),
+                f'ht_fj1_pt500to550{suffix}': hist.Hist('Counts', dataset, linspace_bin(600, 1900)),
+                f'ht_fj1_pt550to600{suffix}': hist.Hist('Counts', dataset, linspace_bin(650, 2000)),
+                f'ht_fj1_pt600to700{suffix}': hist.Hist('Counts', dataset, linspace_bin(700, 2100)),
+                f'ht_fj1_pt700to800{suffix}': hist.Hist('Counts', dataset, linspace_bin(800, 2200)),
+                f'ht_fj1_pt800to100000{suffix}': hist.Hist('Counts', dataset, linspace_bin(1000, 2400)),
 
-            'cutflow': processor.defaultdict_accumulator(
-                partial(processor.defaultdict_accumulator, int)
-            ),
-        })
+                f'ht_fj2_pt200to250{suffix}': hist.Hist('Counts', dataset, linspace_bin(250, 1500)),
+                f'ht_fj2_pt250to300{suffix}': hist.Hist('Counts', dataset, linspace_bin(350, 1600)),
+                f'ht_fj2_pt300to350{suffix}': hist.Hist('Counts', dataset, linspace_bin(400, 1800)),
+                f'ht_fj2_pt350to400{suffix}': hist.Hist('Counts', dataset, linspace_bin(450, 2000)),
+                f'ht_fj2_pt400to450{suffix}': hist.Hist('Counts', dataset, linspace_bin(500, 2200)),
+                f'ht_fj2_pt450to500{suffix}': hist.Hist('Counts', dataset, linspace_bin(550, 2400)),
+                f'ht_fj2_pt500to550{suffix}': hist.Hist('Counts', dataset, linspace_bin(650, 2400)),
+                f'ht_fj2_pt550to600{suffix}': hist.Hist('Counts', dataset, linspace_bin(750, 2400)),
+                f'ht_fj2_pt600to700{suffix}': hist.Hist('Counts', dataset, linspace_bin(850, 2400)),
+                f'ht_fj2_pt700to800{suffix}': hist.Hist('Counts', dataset, linspace_bin(1000, 2400)),
+                f'ht_fj2_pt800to100000{suffix}': hist.Hist('Counts', dataset, linspace_bin(1200, 2400)),
+            })
+        _hists['cutflow'] = processor.defaultdict_accumulator(
+            partial(processor.defaultdict_accumulator, int)
+        )
+        self._accumulator = processor.dict_accumulator(_hists)
 
     @property
     def accumulator(self):
@@ -88,20 +90,36 @@ class MCReweightCoffeaProcessor(processor.ProcessorABC):
         for ptmin, ptmax in self.global_cfg.rwgt_pt_bins:
             events_fj1_pt = events_fj1[(events_fj1.fj_1_pt >= ptmin) & (events_fj1.fj_1_pt < ptmax)]
             events_fj2_pt = events_fj2[(events_fj2.fj_2_pt >= ptmin) & (events_fj2.fj_2_pt < ptmax)]
-    
+
             # Fill the qualified fj_1 and fj_2 events separately
-            out[f'ht_fj1_pt{ptmin}to{ptmax}'].fill(
-                dataset=dataset,
-                ht=events_fj1_pt.ht,
-                weight=ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeight*{lumi}', events_fj1_pt) if is_mc else \
-                    ak.ones_like(events_fj1_pt.ht),
-            )
-            out[f'ht_fj2_pt{ptmin}to{ptmax}'].fill(
-                dataset=dataset,
-                ht=events_fj2_pt.ht,
-                weight=ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeight*{lumi}', events_fj2_pt) if is_mc else \
-                    ak.ones_like(events_fj2_pt.ht),
-            )
+            weight_nom_fj1 = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeight*{lumi}', events_fj1_pt) if is_mc else ak.ones_like(events_fj1_pt.ht)
+            weight_nom_fj2 = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeight*{lumi}', events_fj2_pt) if is_mc else ak.ones_like(events_fj2_pt.ht)
+            for suffix in (['', '_psWeightIsrUp', '_psWeightIsrDown', '_psWeightFsrUp', '_psWeightFsrDown'] if is_mc else ['']):
+                if suffix == '':
+                    weight_fj1 = weight_nom_fj1
+                    weight_fj2 = weight_nom_fj2
+                elif suffix == '_psWeightIsrUp':
+                    weight_fj1 = weight_nom_fj1 * events_fj1_pt.PSWeight[:,2]
+                    weight_fj2 = weight_nom_fj2 * events_fj2_pt.PSWeight[:,2]
+                elif suffix == '_psWeightIsrDown':
+                    weight_fj1 = weight_nom_fj1 * events_fj1_pt.PSWeight[:,0]
+                    weight_fj2 = weight_nom_fj2 * events_fj2_pt.PSWeight[:,0]
+                elif suffix == '_psWeightFsrUp':
+                    weight_fj1 = weight_nom_fj1 * events_fj1_pt.PSWeight[:,3]
+                    weight_fj2 = weight_nom_fj2 * events_fj2_pt.PSWeight[:,3]
+                elif suffix == '_psWeightFsrDown':
+                    weight_fj1 = weight_nom_fj1 * events_fj1_pt.PSWeight[:,1]
+                    weight_fj2 = weight_nom_fj2 * events_fj2_pt.PSWeight[:,1]
+                out[f'ht_fj1_pt{ptmin}to{ptmax}{suffix}'].fill(
+                    dataset=dataset,
+                    ht=events_fj1_pt.ht,
+                    weight=weight_fj1,
+                )
+                out[f'ht_fj2_pt{ptmin}to{ptmax}{suffix}'].fill(
+                    dataset=dataset,
+                    ht=events_fj2_pt.ht,
+                    weight=weight_fj2,
+                )
 
             out['cutflow'][dataset][f'fj1_pt{ptmin}to{ptmax}'] += len(events_fj1_pt)
             out['cutflow'][dataset][f'fj2_pt{ptmin}to{ptmax}'] += len(events_fj2_pt)
@@ -147,20 +165,21 @@ class MCReweightUnit(ProcessingUnit):
 
         # Caculate and store reweighting values to json file
         hist_values = {}
-        for ptmin, ptmax in self.global_cfg.rwgt_pt_bins:
-            h_mc_fj, h_data_fj = {}, {}
-            for jetidx in ['fj1', 'fj2']:
-                ptbname = f'ht_{jetidx}_pt{ptmin}to{ptmax}'
-                h_data_fj[jetidx] = self.result[ptbname]['jetht'].project('ht')
-                h_mc_fj[jetidx] = sum([self.result[ptbname][sam].project('ht') for sam in self.fileset if sam != 'jetht'], h_data_fj[jetidx].identity())
-                # store hist into numerical values
-                _stored = {
-                    'edges': h_data_fj[jetidx].axis('ht').edges().tolist(),
-                    'h_data': h_data_fj[jetidx].to_boost().values(flow=True).tolist(),
-                    'h_mc': h_mc_fj[jetidx].to_boost().values(flow=True).tolist(),
-                    'h_w': np.clip(h_data_fj[jetidx].to_boost().values(flow=True) / np.maximum(h_mc_fj[jetidx].to_boost().values(flow=True), 1e-20), 0., 2.).tolist(),
-                }
-                hist_values[f'{jetidx}_pt{ptmin}to{ptmax}'] = _stored
+        for suffix in ['', '_psWeightIsrUp', '_psWeightIsrDown', '_psWeightFsrUp', '_psWeightFsrDown']:
+            for ptmin, ptmax in self.global_cfg.rwgt_pt_bins:
+                h_mc_fj, h_data_fj = {}, {}
+                for jetidx in ['fj1', 'fj2']:
+                    ptbname = f'ht_{jetidx}_pt{ptmin}to{ptmax}'
+                    h_data_fj[jetidx] = self.result[ptbname]['jetht'].project('ht')
+                    h_mc_fj[jetidx] = sum([self.result[ptbname + suffix][sam].project('ht') for sam in self.fileset if sam != 'jetht'], h_data_fj[jetidx].identity())
+                    # store hist into numerical values
+                    _stored = {
+                        'edges': h_data_fj[jetidx].axis('ht').edges().tolist(),
+                        'h_data': h_data_fj[jetidx].to_boost().values(flow=True).tolist(),
+                        'h_mc': h_mc_fj[jetidx].to_boost().values(flow=True).tolist(),
+                        'h_w': np.clip(h_data_fj[jetidx].to_boost().values(flow=True) / np.maximum(h_mc_fj[jetidx].to_boost().values(flow=True), 1e-20), 0., 2.).tolist(),
+                    }
+                    hist_values[f'{jetidx}_pt{ptmin}to{ptmax}{suffix}'] = _stored
 
         with open(os.path.join(self.outputdir, 'hist.json'), 'w') as fw:
             json.dump(hist_values, fw, indent=4)

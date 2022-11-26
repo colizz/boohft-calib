@@ -1,15 +1,17 @@
 import awkward as ak
 import numpy as np
+import re
 
 from logger import _logger
 
-def lookup_pt_based_weight(weight_map, pt_reweight_edges, jet_idx, jet_pt, jet_var, jet_var_maxlimit=None):
+def lookup_pt_based_weight(weight_map, pt_reweight_edges, jet_idx, jet_pt, jet_var, jet_var_maxlimit=None, read_suffix=''):
     r"""Obtain the pT-based weight using the weight map. jet_idx: 'fj1' or 'fj2'."""
 
     assert jet_var_maxlimit is not None, "Need to specify a jet_var_maxlimit."
     # flatten the 2d weight factor map
-    weight_map_flatten = ak.flatten(ak.Array([weight_map[c]['h_w'] for c in weight_map if c.startswith(jet_idx)]))
-    var_edges_list = [([0] + weight_map[c]['edges']) for c in weight_map if c.startswith(jet_idx)]
+    selected_weight_names = [c for c in weight_map if re.match(f'{jet_idx}_pt\d+to\d+{read_suffix}$', c)]
+    weight_map_flatten = ak.flatten(ak.Array([weight_map[c]['h_w'] for c in selected_weight_names]))
+    var_edges_list = [([0] + weight_map[c]['edges']) for c in selected_weight_names]
     flatten_edges = [edge + ivar * jet_var_maxlimit for ivar, var_edges in enumerate(var_edges_list) for edge in var_edges]
 
     # get the 1d index on the flattened factor map
