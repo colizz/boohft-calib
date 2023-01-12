@@ -25,6 +25,7 @@ else
 
     ## Install CombineHarvester
     git clone https://github.com/cms-analysis/CombineHarvester.git CombineHarvester
+    cp $WORKDIR/cmssw/data/plot1DScanWithOutput.py CombineHarvester/CombineTools/scripts/
     scram b -j8
 
     cd ../..

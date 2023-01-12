@@ -52,10 +52,11 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
         self.tagger_expr = parse_tagger_expr(global_cfg.tagger_name_replace_map, global_cfg.tagger.expr)
         self.lookup_mc_weight = partial(lookup_pt_based_weight, self.weight_map, self.pt_reweight_edges, jet_var_maxlimit=2500.)
         self.lookup_sfbdt_weight = partial(lookup_pt_based_weight, self.sfbdt_weight_map, self.pt_reweight_edges, jet_var_maxlimit=1.)
-        self.untypes = ['nominal', 'fracBCLUp', 'fracBCLDown', 'puUp', 'puDown', 'psWeightIsrUp', 'psWeightIsrDown', 'psWeightFsrUp', 'psWeightFsrDown', 'sfBDTRwgtUp']
+        self.untypes = ['nominal', 'fracBCLUp', 'fracBCLDown', 'puUp', 'puDown', 'l1PreFiringUp', 'l1PreFiringDown', 'jesUp', 'jesDown', 'jerUp', 'jerDown', 'psWeightIsrUp', 'psWeightIsrDown', 'psWeightFsrUp', 'psWeightFsrDown', 'sfBDTRwgtUp']
         self.write_untypes = [
-            'nominal', 'puUp', 'puDown', 'fracBBUp', 'fracBBDown', 'fracCCUp', 'fracCCDown', \
-            'fracLightUp', 'fracLightDown', 'psWeightIsrUp', 'psWeightIsrDown', 'psWeightFsrUp', 'psWeightFsrDown', \
+            'nominal', 'puUp', 'puDown', 'l1PreFiringUp', 'l1PreFiringDown', 'jesUp', 'jesDown', 'jerUp', 'jerDown', \
+            'fracBBUp', 'fracBBDown', 'fracCCUp', 'fracCCDown', 'fracLightUp', 'fracLightDown', \
+            'psWeightIsrUp', 'psWeightIsrDown', 'psWeightFsrUp', 'psWeightFsrDown', \
             'sfBDTRwgtUp', 'sfBDTRwgtDown', 'fitVarRwgtUp', 'fitVarRwgtDown'
         ]
         if self.global_cfg.custom_sfbdt_path is not None:
@@ -140,15 +141,16 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
                 sfbdt = ak.Array(self.xgb.eval(sfbdt_inputs))
             else:
                 sfbdt = events_fj[f'fj_{i}_sfBDT']
+            sfbdt_corr_cache = {} # prepared for JES/JER corrected version of sfBDT
             tagger = ak.numexpr.evaluate(self.tagger_expr.replace('fj_x', f'fj_{i}'), events_fj)
             xtagger = self.xtagger_map(tagger)
 
             # calculate weights in multiple senerios
             weight = {}
             if is_mc:
-                mc_weight = self.lookup_mc_weight(f'fj{i}', events_fj[f'fj_{i}_pt'], events_fj['ht'])
-                sfbdt_weight = self.lookup_sfbdt_weight(f'fj{i}', events_fj[f'fj_{i}_pt'], sfbdt)
-                weight_base = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeight*{lumi}', events_fj)
+                mc_weight = self.lookup_mc_weight(f'fj{i}', pt, events_fj['ht'])
+                sfbdt_weight = self.lookup_sfbdt_weight(f'fj{i}', pt, sfbdt)
+                weight_base = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeight*l1PreFiringWeight*{lumi}', events_fj)
                 weight['nominal'] = weight_base * mc_weight
                 weight['fracBCLUp'] = weight['nominal'] * ak.numexpr.evaluate(
                     f'(fj_{i}_nbhadrons>=1) * (1.2*(fj_{i}_nbhadrons>1) + 1.0*(fj_{i}_nbhadrons<=1)) + ' + \
@@ -160,13 +162,16 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
                     f'((fj_{i}_nbhadrons==0) & (fj_{i}_nchadrons>=1)) * (0.8*(fj_{i}_nchadrons>1) + 1.0*(fj_{i}_nchadrons<=1)) + ' + \
                     f'((fj_{i}_nbhadrons==0) & (fj_{i}_nchadrons==0)) * (0.8)', events_fj
                 )
-                weight['puUp'] = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeightUp*{lumi}', events_fj) * mc_weight
-                weight['puDown'] = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeightDown*{lumi}', events_fj) * mc_weight
+                weight['puUp'] = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeightUp*l1PreFiringWeight*{lumi}', events_fj) * mc_weight
+                weight['puDown'] = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeightDown*l1PreFiringWeight*{lumi}', events_fj) * mc_weight
+                weight['l1PreFiringUp'] = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeight*l1PreFiringWeightUp*{lumi}', events_fj) * mc_weight
+                weight['l1PreFiringDown'] = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeight*l1PreFiringWeightDown*{lumi}', events_fj) * mc_weight
                 if hasattr(events_fj, 'PSWeight') and len(events_fj.PSWeight[0]) == 4:
-                    weight['psWeightIsrUp'] = weight_base * self.lookup_mc_weight(f'fj{i}', events_fj[f'fj_{i}_pt'], events_fj['ht'], read_suffix='_psWeightIsrUp') * events_fj.PSWeight[:,2]
-                    weight['psWeightIsrDown'] =  weight_base * self.lookup_mc_weight(f'fj{i}', events_fj[f'fj_{i}_pt'], events_fj['ht'], read_suffix='_psWeightIsrDown') * events_fj.PSWeight[:,0]
-                    weight['psWeightFsrUp'] =  weight_base * self.lookup_mc_weight(f'fj{i}', events_fj[f'fj_{i}_pt'], events_fj['ht'], read_suffix='_psWeightFsrUp') * events_fj.PSWeight[:,3]
-                    weight['psWeightFsrDown'] =  weight_base * self.lookup_mc_weight(f'fj{i}', events_fj[f'fj_{i}_pt'], events_fj['ht'], read_suffix='_psWeightFsrDown') * events_fj.PSWeight[:,1]
+                    # apply PSWeight only at the final stage, while still using the nominal MC reweighting map
+                    weight['psWeightIsrUp'] = weight['nominal'] * events_fj.PSWeight[:,2]
+                    weight['psWeightIsrDown'] = weight['nominal'] * events_fj.PSWeight[:,0]
+                    weight['psWeightFsrUp'] = weight['nominal'] * events_fj.PSWeight[:,3]
+                    weight['psWeightFsrDown'] = weight['nominal'] * events_fj.PSWeight[:,1]
                 else:
                     weight['psWeightIsrUp'] = weight['psWeightIsrDown'] = weight['psWeightFsrUp'] = weight['psWeightFsrDown'] = weight['nominal']
                 weight['sfBDTRwgtUp'] = weight['nominal'] * sfbdt_weight
@@ -190,14 +195,47 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
                 for wp in self.wps:
                     for untype in self.untypes:
                         # a histogram standards for a given pT range (coastline depends on this), for each WP, and for an unce type
-                        out[f'h_pt{ptmin}to{ptmax}_{wp}_{untype}'].fill(
-                            dataset=dataset,
-                            flv=isB[ptsel] * 1 + isC[ptsel] * 2,
-                            passwp=passwp[wp][ptsel],
-                            coastline=coastline_ptsel,
-                            logmsv=logmsv[ptsel],
-                            weight=weight[untype][ptsel]
-                        )
+                        if (not is_mc) or (is_mc and untype not in ['jesUp', 'jesDown', 'jerUp', 'jerDown']):
+                            # histogram differs only by a specific event weight
+                            out[f'h_pt{ptmin}to{ptmax}_{wp}_{untype}'].fill(
+                                dataset=dataset,
+                                flv=isB[ptsel] * 1 + isC[ptsel] * 2,
+                                passwp=passwp[wp][ptsel],
+                                coastline=coastline_ptsel,
+                                logmsv=logmsv[ptsel],
+                                weight=weight[untype][ptsel]
+                            )
+                        else:
+                            # special handling for JES/JER: jet pt need to be corrected
+                            suffix_to_branch = {'jesUp': '_jesUncFactorUp', 'jesDown': '_jesUncFactorDn', 'jerUp': '_jerSmearFactorUp', 'jerDown': '_jerSmearFactorDn'}
+                            
+                            pt_corr = events_fj[f'fj_{i}_pt'] * events_fj[f'fj_{i}{suffix_to_branch[untype]}']
+                            ht_corr = events_fj[f'ht{suffix_to_branch[untype]}']
+                            ptsel_corr = (pt_corr >= ptmin) & (pt_corr < ptmax)
+                            logmsv_corr = np.log(np.maximum(msv * events_fj[f'fj_{i}{suffix_to_branch[untype]}'], 1e-20))
+                            weight_corr = weight_base * self.lookup_mc_weight(f'fj{i}', pt_corr, ht_corr, read_suffix=f'_{untype}') # use JES/JER reweight map and corrected HT & pT variables
+                            if untype not in sfbdt_corr_cache.keys():
+                                assert self.global_cfg.custom_sfbdt_path is not None, \
+                                    "To derive JES/JER templates, a customized sfBDT path must be specified because sfBDT will be recalculated from JES/JER corrected input"
+                                sfbdt_inputs = {
+                                    'fj_2_tau21': events_fj[f'fj_{i}_tau21'],
+                                    'fj_2_sj1_rawmass': events_fj[f'fj_{i}_sj1_rawmass'] * events_fj[f'fj_{i}{suffix_to_branch[untype]}'],
+                                    'fj_2_sj2_rawmass': events_fj[f'fj_{i}_sj2_rawmass'] * events_fj[f'fj_{i}{suffix_to_branch[untype]}'],
+                                    'fj_2_ntracks_sv12': events_fj[f'fj_{i}_ntracks_sv12'],
+                                    'fj_2_sj1_sv1_pt': events_fj[f'fj_{i}_sj1_sv1_pt'] * events_fj[f'fj_{i}{suffix_to_branch[untype]}'],
+                                    'fj_2_sj2_sv1_pt': events_fj[f'fj_{i}_sj2_sv1_pt'] * events_fj[f'fj_{i}{suffix_to_branch[untype]}'],
+                                }
+                                sfbdt_corr_cache[untype] = ak.Array(self.xgb.eval(sfbdt_inputs))
+                            coastline_ptsel_corr = ak.from_numpy(self.coastline_map[ipt]['fspline'](ak.to_numpy(xtagger[ptsel_corr]), ak.to_numpy(sfbdt_corr_cache[untype][ptsel_corr])))
+                            out[f'h_pt{ptmin}to{ptmax}_{wp}_{untype}'].fill(
+                                dataset=dataset,
+                                flv=isB[ptsel_corr] * 1 + isC[ptsel_corr] * 2,
+                                passwp=passwp[wp][ptsel_corr],
+                                coastline=coastline_ptsel_corr,
+                                logmsv=logmsv_corr[ptsel_corr],
+                                weight=weight_corr[ptsel_corr]
+                            )
+
                 # fill in inclusive histogram
                 for var, expr in zip(self.incl_var_dict.keys(), [
                     'sfbdt[ptsel]', 'xtagger[ptsel]', 'logmsv[ptsel]', \
@@ -491,8 +529,9 @@ def get_unit_template(bhs, wp, pt_lim, ibdt, w_untype, ipasswp, iflv, is_mc=True
                 h[bh.loc('jetht'), 0 if not is_incl_ else bh.sum, ipasswp_ if not is_incl_ else bh.sum, bdt_indices[iibdt], :] for iibdt in range(ibdt + 1)
             ])
 
-    assert w_untype in ['nominal', 'puUp', 'puDown', 'fracBBUp', 'fracBBDown', 'fracCCUp', 'fracCCDown', \
-        'fracLightUp', 'fracLightDown', 'psWeightIsrUp', 'psWeightIsrDown', 'psWeightFsrUp', 'psWeightFsrDown', \
+    assert w_untype in ['nominal', 'puUp', 'puDown', 'l1PreFiringUp', 'l1PreFiringDown', 'jesUp', 'jesDown', 'jerUp', 'jerDown', \
+        'fracBBUp', 'fracBBDown', 'fracCCUp', 'fracCCDown', 'fracLightUp', 'fracLightDown', \
+        'psWeightIsrUp', 'psWeightIsrDown', 'psWeightFsrUp', 'psWeightFsrDown', \
         'sfBDTRwgtUp', 'sfBDTRwgtDown', 'fitVarRwgtUp', 'fitVarRwgtDown'], "Unrecognized unce type for writing templates."
 
     # not special handling for retreiving data template
@@ -500,7 +539,7 @@ def get_unit_template(bhs, wp, pt_lim, ibdt, w_untype, ipasswp, iflv, is_mc=True
         return default(w_untype_='nominal')
 
     # for these unce type: simply retrive the histograms from coffea output
-    if w_untype in ['nominal', 'puUp', 'puDown', 'psWeightIsrUp', 'psWeightIsrDown', 'psWeightFsrUp', 'psWeightFsrDown', 'sfBDTRwgtUp']:
+    if w_untype in ['nominal', 'puUp', 'puDown', 'l1PreFiringUp', 'l1PreFiringDown', 'jesUp', 'jesDown', 'jerUp', 'jerDown', 'psWeightIsrUp', 'psWeightIsrDown', 'psWeightFsrUp', 'psWeightFsrDown', 'sfBDTRwgtUp']:
         h_out = default()
         if is_incl:
             return h_out

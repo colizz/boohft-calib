@@ -21,6 +21,7 @@ import subprocess
 import pickle
 import shutil
 import glob
+import json
 import os
 
 from unit import ProcessingUnit, StandaloneMultiThreadedUnit
@@ -84,6 +85,7 @@ class FitUnit(ProcessingUnit):
             type=self.global_cfg.type, # bb, cc, or qq calibration type
             skip_fit=self.global_cfg.skip_fit,
             run_impact_for_central_fit=self.global_cfg.run_impact_for_central_fit,
+            run_full_unce_breakdown_for_central_fit=self.global_cfg.run_full_unce_breakdown_for_central_fit,
             use_helvetica=self.global_cfg.use_helvetica,
             color_order=sns.color_palette('cubehelix', 3),
             cat_order=['flvL', 'flvC', 'flvB'] if self.global_cfg.type=='bb' \
@@ -413,7 +415,7 @@ class FitUnit(ProcessingUnit):
 
             if self.global_cfg.show_unce_breakdown:
                 title_map = {'bb': 'bb-tagging', 'cc': 'cc-tagging', 'qq': 'light-tagging'}
-                web_mode.add_h1(f'{title_map[self.global_cfg.type]} SF uncetainty breakdown for syst. and stat.')
+                web_mode.add_h1(f'{title_map[self.global_cfg.type]} SF uncetainty breakdown for syst. and stat. (data stats only)')
                 for wp in wps:
                     web_mode.add_h2(f'**{self.global_cfg.default_wp_name_map[wp]}** WP:')
                     web_mode.add_text('Left to right: pT in ' + ', '.join([pt_title(ptmin, ptmax) for ptmin, ptmax in pt_edge_pairs]) + '\n\n')
@@ -422,7 +424,23 @@ class FitUnit(ProcessingUnit):
                         collect_figure_to_web(web_mode, orig_path=pjoin(get_dir(mode, wp, pt, c_bdt), 'unce_breakdown.png'),
                                             suffix=f'__{wp}__{pt}__{c_bdt}', title=f'{pt_title(ptmin, ptmax)}'
                                             )
-            
+
+            if mode == 'main' and self.global_cfg.show_full_unce_breakdown:
+                title_map = {'bb': 'bb-tagging', 'cc': 'cc-tagging', 'qq': 'light-tagging'}
+                web_mode.add_h1(f'{title_map[self.global_cfg.type]} SF full uncetainty breakdown')
+                for wp in wps:
+                    web_mode.add_h2(f'**{self.global_cfg.default_wp_name_map[wp]}** WP:')
+                    web_mode.add_text('Left to right: pT in ' + ', '.join([pt_title(ptmin, ptmax) for ptmin, ptmax in pt_edge_pairs]) + '\n')
+                    web_mode.add_text('Note that you can find a link on the previous page to retreive the values.\n\n')
+                    for pt, (ptmin, ptmax) in zip(pt_list, pt_edge_pairs):
+                        c_bdt = get_central_sfbdt(mode, wp, pt)
+                        collect_figure_to_web(web_mode, orig_path=pjoin(get_dir(mode, wp, pt, c_bdt), 'full_unce_breakdown.pdf'),
+                                            suffix=f'__{wp}__{pt}', title=f'{pt_title(ptmin, ptmax)}', type='pdf'
+                                            )
+                        collect_figure_to_web(web_mode, orig_path=pjoin(get_dir(mode, wp, pt, c_bdt), 'full_unce_breakdown.json'),
+                                            suffix=f'__{wp}__{pt}', title=f'{pt_title(ptmin, ptmax)}', type='none'
+                                            )
+
             # make SF plots for varied sfBDT cut
             if self.global_cfg.show_sfbdt_variation:
                 title_map = {'bb': 'bb-tagging', 'cc': 'cc-tagging', 'qq': 'light-tagging'}
@@ -545,6 +563,37 @@ class FitUnit(ProcessingUnit):
                     + ' | '.join([f'**{c:.3f}** [{el:+.3f}/{eh:+.3f}]' for c, el, eh in zip(center, errl, errh)]) + ' |'
                 )
 
+        # write breakdown uncertainties in a json file
+        if self.global_cfg.show_full_unce_breakdown:
+            web.add_text('\n---------------')
+            web.add_h1('Access values of SF full uncertainties breakdown')
+            full_unce_dict = {}
+            for i, wp in enumerate(wps):
+                for ipt, pt in enumerate(pt_list):
+                    _, el, eh = center_fin['main'][i][ipt], errl_fin['main'][i][ipt], errh_fin['main'][i][ipt]
+                    c0, el0, eh0 = center_comb[i][ipt], errl_comb[i][ipt], errh_comb[i][ipt]
+                    maxd = maxdist[i][ipt]
+                    with open(f'{self.webdir}/main/full_unce_breakdown__{wp}__{pt}.json') as f:
+                        unces = json.load(f)
+                    # calculate external uncertainty contributions
+                    unces['extSfBDTVariation'] = {
+                        'high': np.sqrt(max(eh**2 - unces['all']['high']**2, 0.)),
+                        'low':  np.sqrt(max(el**2 - unces['all']['low']**2, 0.)),
+                    }
+                    unces['extVarRwgt'] = {'high': maxd, 'low': maxd}
+                    unces['final'] = {'central': c0, 'high': eh0, 'low': abs(el0)}
+                    del unces['all']
+
+                    full_unce_dict[f'{wp}_{pt}'] = unces
+
+            web_unce = WebMaker('SF full uncertainties breakdown')
+            web_unce.add_text('```json\n' + json.dumps(full_unce_dict, indent=4) + '\n```')
+            web_unce.write_to_file(self.webdir, filename='sf_full_unce_breakdown.html')
+            with open(pjoin(self.webdir, 'sf_full_unce_breakdown.json'), 'w') as f:
+                f.write(json.dumps(full_unce_dict, indent=4))
+
+            web.add_text('[[Read online](sf_full_unce_breakdown.html)] [[Download](sf_full_unce_breakdown.json)]')
+
         web.write_to_file(self.webdir)
         
 
@@ -566,8 +615,13 @@ def concurrent_fit_unit(arg):
     # 1. Launch the fit
     if not args.skip_fit:
         # _logger.debug("Run fit point " + workdir)
-        if is_central and args.run_impact_for_central_fit:
-            out, ret = runcmd(f"bash cmssw/launch_fit.sh {inputdir} {workdir} --type={args.type} --mode={mode} --run-impact --run-unce-breakdown")
+        if is_central:
+            ext_args = ''
+            if args.run_impact_for_central_fit:
+                ext_args += '--run-impact --run-unce-breakdown '
+            if args.run_full_unce_breakdown_for_central_fit and mode == 'main':
+                ext_args += '--run-full-unce-breakdown '
+            out, ret = runcmd(f"bash cmssw/launch_fit.sh {inputdir} {workdir} --type={args.type} --mode={mode} {ext_args}")
         else:
             out, ret = runcmd(f"bash cmssw/launch_fit.sh {inputdir} {workdir} --type={args.type} --mode={mode}")
         if ret != 0:

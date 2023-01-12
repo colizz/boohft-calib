@@ -362,7 +362,7 @@ def make_fit_summary_plots(center, errl, errh, outputdir, args, plot_xticklabels
 
     # Add some text for labels, title and custom x-axis tick labels, etc.
     ax.set_xlabel(r'$p_{T}$(j) [GeV]', ha='right', x=1.0); ax.set_ylabel(plot_ylabel, ha='right', y=1.0)
-    ax.set_xlim(-0.5, len(plot_xticklabels)-0.5); ax.set_ylim(0., 1.6)
+    ax.set_xlim(-0.5, len(plot_xticklabels)-0.5); ax.set_ylim(0., 2.)
     ax.set_xticks(x_ticks); ax.set_xticklabels(plot_xticklabels); ax.tick_params(axis='both', which='minor', bottom=False, top=False)
     ax.text(0.05, 0.92, plot_text, transform=ax.transAxes, fontweight='bold') 
     ax.legend(loc='lower left')

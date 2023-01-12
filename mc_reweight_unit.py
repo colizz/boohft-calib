@@ -39,7 +39,7 @@ class MCReweightCoffeaProcessor(processor.ProcessorABC):
             return hist.Bin('ht', 'ht', (end - start) // width, start, end)
 
         _hists = {}
-        for suffix in ['', '_psWeightIsrUp', '_psWeightIsrDown', '_psWeightFsrUp', '_psWeightFsrDown']:
+        for suffix in ['', '_jesUp', '_jesDown', '_jerUp', '_jerDown']:
             _hists.update({
                 f'ht_fj1_pt200to250{suffix}': hist.Hist('Counts', dataset, linspace_bin(250, 1250)),
                 f'ht_fj1_pt250to300{suffix}': hist.Hist('Counts', dataset, linspace_bin(350, 1400)),
@@ -90,34 +90,56 @@ class MCReweightCoffeaProcessor(processor.ProcessorABC):
         for ptmin, ptmax in self.global_cfg.rwgt_pt_bins:
             events_fj1_pt = events_fj1[(events_fj1.fj_1_pt >= ptmin) & (events_fj1.fj_1_pt < ptmax)]
             events_fj2_pt = events_fj2[(events_fj2.fj_2_pt >= ptmin) & (events_fj2.fj_2_pt < ptmax)]
+            ht_nom_fj1 = events_fj1_pt.ht
+            ht_nom_fj2 = events_fj2_pt.ht
 
             # Fill the qualified fj_1 and fj_2 events separately
-            weight_nom_fj1 = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeight*{lumi}', events_fj1_pt) if is_mc else ak.ones_like(events_fj1_pt.ht)
-            weight_nom_fj2 = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeight*{lumi}', events_fj2_pt) if is_mc else ak.ones_like(events_fj2_pt.ht)
-            for suffix in (['', '_psWeightIsrUp', '_psWeightIsrDown', '_psWeightFsrUp', '_psWeightFsrDown'] if is_mc else ['']):
+            weight_nom_fj1 = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeight*l1PreFiringWeight*{lumi}', events_fj1_pt) if is_mc else ak.ones_like(events_fj1_pt.ht)
+            weight_nom_fj2 = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeight*l1PreFiringWeight*{lumi}', events_fj2_pt) if is_mc else ak.ones_like(events_fj2_pt.ht)
+            # Fill histograms for nominal case ('') and JES/JER cases; no
+            for suffix in (['', '_jesUp', '_jesDown', '_jerUp', '_jerDown'] if is_mc else ['']):
                 if suffix == '':
+                    ht_fj1, ht_fj2 = ht_nom_fj1, ht_nom_fj2
                     weight_fj1 = weight_nom_fj1
                     weight_fj2 = weight_nom_fj2
+
+                # the following PSWeight variation schemes are not considered now
                 elif suffix == '_psWeightIsrUp':
+                    ht_fj1, ht_fj2 = ht_nom_fj1, ht_nom_fj2
                     weight_fj1 = weight_nom_fj1 * events_fj1_pt.PSWeight[:,2]
                     weight_fj2 = weight_nom_fj2 * events_fj2_pt.PSWeight[:,2]
                 elif suffix == '_psWeightIsrDown':
+                    ht_fj1, ht_fj2 = ht_nom_fj1, ht_nom_fj2
                     weight_fj1 = weight_nom_fj1 * events_fj1_pt.PSWeight[:,0]
                     weight_fj2 = weight_nom_fj2 * events_fj2_pt.PSWeight[:,0]
                 elif suffix == '_psWeightFsrUp':
+                    ht_fj1, ht_fj2 = ht_nom_fj1, ht_nom_fj2
                     weight_fj1 = weight_nom_fj1 * events_fj1_pt.PSWeight[:,3]
                     weight_fj2 = weight_nom_fj2 * events_fj2_pt.PSWeight[:,3]
                 elif suffix == '_psWeightFsrDown':
+                    ht_fj1, ht_fj2 = ht_nom_fj1, ht_nom_fj2
                     weight_fj1 = weight_nom_fj1 * events_fj1_pt.PSWeight[:,1]
                     weight_fj2 = weight_nom_fj2 * events_fj2_pt.PSWeight[:,1]
+
+                elif suffix in ['_jesUp', '_jesDown', '_jerUp', '_jerDown']:
+                    suffix_to_branch = {'_jesUp': '_jesUncFactorUp', '_jesDown': '_jesUncFactorDn', '_jerUp': '_jerSmearFactorUp', '_jerDown': '_jerSmearFactorDn'}
+                    # should use corrected ht and jet pt to fill histograms
+                    pt_fj1_corr = events_fj1.fj_1_pt * events_fj1[f'fj_1{suffix_to_branch[suffix]}']
+                    pt_fj2_corr = events_fj2.fj_2_pt * events_fj2[f'fj_2{suffix_to_branch[suffix]}']
+                    events_fj1_pt_corr = events_fj1[(pt_fj1_corr >= ptmin) & (pt_fj1_corr < ptmax)]
+                    events_fj2_pt_corr = events_fj2[(pt_fj2_corr >= ptmin) & (pt_fj2_corr < ptmax)]
+
+                    ht_fj1, ht_fj2 = events_fj1_pt_corr[f'ht{suffix_to_branch[suffix]}'], events_fj2_pt_corr[f'ht{suffix_to_branch[suffix]}']
+                    weight_fj1 = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeight*l1PreFiringWeight*{lumi}', events_fj1_pt_corr)
+                    weight_fj2 = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeight*l1PreFiringWeight*{lumi}', events_fj2_pt_corr)
                 out[f'ht_fj1_pt{ptmin}to{ptmax}{suffix}'].fill(
                     dataset=dataset,
-                    ht=events_fj1_pt.ht,
+                    ht=ht_fj1,
                     weight=weight_fj1,
                 )
                 out[f'ht_fj2_pt{ptmin}to{ptmax}{suffix}'].fill(
                     dataset=dataset,
-                    ht=events_fj2_pt.ht,
+                    ht=ht_fj2,
                     weight=weight_fj2,
                 )
 
@@ -165,7 +187,7 @@ class MCReweightUnit(ProcessingUnit):
 
         # Caculate and store reweighting values to json file
         hist_values = {}
-        for suffix in ['', '_psWeightIsrUp', '_psWeightIsrDown', '_psWeightFsrUp', '_psWeightFsrDown']:
+        for suffix in ['', '_jesUp', '_jesDown', '_jerUp', '_jerDown']:
             for ptmin, ptmax in self.global_cfg.rwgt_pt_bins:
                 h_mc_fj, h_data_fj = {}, {}
                 for jetidx in ['fj1', 'fj2']:

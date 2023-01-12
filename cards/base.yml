@@ -1,7 +1,7 @@
 ## This card includes all base configurations for the tool
 ## Please do not modify the content here but instead rewrite the item in the calibration config cards
 
-version: v3.0.5
+version: v3.1.0
 
 ##############################
 ## Configuration on modules ##
@@ -34,11 +34,13 @@ run_central_fit_only: false  # if true, only run the central sfBDT fit for each 
 # 4_fit options part B (for fit details in each single fit job)
 skip_fit: false  # if true, skip the fit and directly go to plot making with existing results
 run_impact_for_central_fit: true  # when true, also run impact and uncertainty break down for the central fit, which can be more time costly
+run_full_unce_breakdown_for_central_fit: true  # when true, also run full uncertainty break down for the central fit, and get the unce contribution from each source
 
 # 4_fit options part C (for visualizing fit results)
 show_fitvarrwgt_unce: false  # if true, include the fit var reweighting uncertianty in the fit result and put corresponding on web
 show_fit_number_only: false  # if true, only show the fit number on webpage
 show_unce_breakdown: true  # if true, make the uncertainty breakdown plots on web
+show_full_unce_breakdown: true  # if true, make the full uncertainty breakdown plots on web and provide the json file to retrieve the values
 show_sfbdt_variation: true # if true, draw and show the sfBDT variation plots
 show_sfbdt_variation_norun: false # if true, only show the sfBDT variation plots without running the plots again
 show_sfbdt_variation_all_flavour: false  # if true, show all flavour plots for sfBDT variation
@@ -67,7 +69,7 @@ hlt_branches:
 rwgt_pt_bins: [[200, 250], [250, 300], [300, 350], [350, 400], [400, 450], [450, 500], [500, 550], [550, 600], [600, 700], [700, 800], [800, 100000]]
 
 # uncertainty list to run
-unce_list: [pu, fracBB, fracCC, fracLight, psWeightIsr, psWeightFsr, sfBDTRwgt, fitVarRwgt]
+unce_list: [pu, l1PreFiring, jes, jer, fracBB, fracCC, fracLight, psWeightIsr, psWeightFsr, sfBDTRwgt, fitVarRwgt]
 
 # mapping the tagger name in NanoAOD and NanoHRT tuples
 tagger_name_replace_map:

@@ -57,6 +57,10 @@ See detailed explanation in the example card [`cards/example_bb_PNetXbbVsQCD.yml
 --------
 ## Update notes
 
+v3.1.0 December 2, 2022
+ - Feature: add new uncertainties sources
+ - Feature: allow breaking down the full uncertainty list
+
 v3.0.5 November 25, 2022
  - Feature: allow using custom sfBDT models to replace the defalt one
 

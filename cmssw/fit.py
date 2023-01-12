@@ -20,6 +20,7 @@ parser.add_argument('--ext-unce', default=None, help='Extra uncertainty term to 
 parser.add_argument('--bound', default=None, help='Set the bound of three SFs, e.g. --bound 0.5,2 (which are the default values)')
 parser.add_argument('--run-impact', action='store_true', help='Run impact plots.')
 parser.add_argument('--run-unce-breakdown', action='store_true', help='Run uncertainty breakdown')
+parser.add_argument('--run-full-unce-breakdown', action='store_true', help='Run full uncertainty breakdown')
 args = parser.parse_args()
 
 if args.type == 'bb':
@@ -56,16 +57,21 @@ all_procs = sig_procs + bkg_procs
 
 bins = cb.bin_set()
 
-shapeSysts = {
-    'pu':all_procs,
-    'fracBB':['flvB'],
-    'fracCC':['flvC'],
-    'fracLight':['flvL'],
-    'psWeightIsr':all_procs,
-    'psWeightFsr':all_procs,
-    'sfBDTRwgt':all_procs,
-    'fitVarRwgt':all_procs,
-}
+syst_list = ['lumi_13TeV', 'pu', 'l1PreFiring', 'jes', 'jer', 'fracBB', 'fracCC', 'fracLight', 'psWeightIsr', 'psWeightFsr', 'sfBDTRwgt', 'fitVarRwgt']
+
+shapeSysts = {}
+for syst in syst_list:
+    if syst == 'lumi_13TeV':
+        continue
+    elif syst == 'fracBB':
+        shapeSysts[syst] = ['flvB']
+    elif syst == 'fracCC':
+        shapeSysts[syst] = ['flvC']
+    elif syst == 'fracLight':
+        shapeSysts[syst] = ['flvL']
+    else:
+        shapeSysts[syst] = all_procs
+
 if args.ext_unce is not None:
     for ext_unce in args.ext_unce.split(','):
         if not ext_unce.startswith('~'):
@@ -106,12 +112,19 @@ with open(os.path.join(args.workdir, outputname), 'w') as fout:
 
     if useAutoMCStats:
         fout.write('* autoMCStats 20\n')
+    
+    # write groups
+    if args.run_full_unce_breakdown:
+        fout.write('\n')
+        for syst in cb.syst_name_set():
+            fout.write('%s group = %s\n' % (syst.ljust(15), syst))
 
 ## Start running higgs combine
 
 import subprocess
 def runcmd(cmd, shell=True):
     """Run a shell command"""
+    print cmd
     p = subprocess.Popen(
         cmd, shell=shell, universal_newlines=True
     )
@@ -156,3 +169,24 @@ combine -M MultiDimFit -m 125 --algo=grid --points=50 -n Stat higgsCombineBestfi
 plot1DScan.py higgsCombineGrid.MultiDimFit.mH125.root --others 'higgsCombineStat.MultiDimFit.mH125.root:FreezeAll:2' --POI SF_{flv_poi1} -o unce_breakdown --breakdown Syst,Stat
 '''.format(workdir=args.workdir, flv_poi1=flv_poi1, ext_fit_options=ext_fit_options)
     )
+
+if args.run_full_unce_breakdown:
+    assert args.mode == 'main', '--run-full-unce-breakdown only works with --mode=main'
+    cmd = '''
+cd {workdir} && \
+combine -M MultiDimFit -m 125 SF.root --algo=grid --robustFit=1 --points=50 -n Grid --redefineSignalPOIs SF_{flv_poi1} {ext_fit_options} && \
+combine -M MultiDimFit -m 125 SF.root --algo=singles --robustFit=1 -n Bestfit --saveWorkspace {ext_fit_options} &&
+'''.format(workdir=args.workdir, flv_poi1=flv_poi1, ext_fit_options=ext_fit_options)
+    comb_plot_opt = []
+    syst_list_iter = [s for s in syst_list[::-1] if s not in ['sfBDTRwgt', 'fitVarRwgt']]
+    for i in range(len(syst_list_iter)):
+        params = ','.join(syst_list_iter[:i+1])+',sfBDTRwgt,fitVarRwgt'
+        suffix = 'freeze_till_{syst}'.format(syst=syst_list_iter[i])
+        cmd += 'combine -M MultiDimFit -m 125 --algo=grid --points=50 higgsCombineBestfit.MultiDimFit.mH125.root --redefineSignalPOIs SF_{flv_poi1} --snapshotName MultiDimFit --setParameters sfBDTRwgt=0,fitVarRwgt=0 --freezeParameters {params} -n {suffix} && \n'.format(
+            flv_poi1=flv_poi1, params=params, suffix=suffix
+        )
+        comb_plot_opt.append('higgsCombine{suffix}.MultiDimFit.mH125.root:{suffix}:{i}'.format(suffix=suffix, i=i+2))
+    cmd += 'plot1DScanWithOutput.py higgsCombineGrid.MultiDimFit.mH125.root --others {others_params} --POI SF_{flv_poi1} -o full_unce_breakdown --breakdown {breakdown}'.format(
+        flv_poi1=flv_poi1, others_params=' '.join(comb_plot_opt), breakdown=','.join(syst_list_iter)+',stats'
+    ) # note: stats includes both MC and data stats
+    runcmd(cmd)

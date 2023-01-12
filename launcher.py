@@ -8,6 +8,7 @@ from types import SimpleNamespace
 import copy
 import yaml
 import json
+import ast
 import os
 
 from mc_reweight_unit import MCReweightUnit
@@ -95,7 +96,7 @@ def launch_routine(global_cfg):
     _logger.info(f'Job done! Everything write to webpage: {webpage}')
 
 
-def launch(config_path, workers=None, run_step=None, skip_coffea=None, multi_years=None):
+def launch(config_path, workers=None, run_step=None, skip_coffea=None, options=None, multi_years=None):
     r"""Launch all steps"""
 
     global_cfg_base = load_global_cfg(config_path)
@@ -105,6 +106,11 @@ def launch(config_path, workers=None, run_step=None, skip_coffea=None, multi_yea
         global_cfg_base.run_step = run_step
     if skip_coffea is not None:
         global_cfg_base.skip_coffea = skip_coffea
+    if options is not None and len(options) > 0:
+        options = {k: ast.literal_eval(v) for k, v in options}
+        print(options)
+        for k in options:
+            setattr(global_cfg_base, k, options[k])
 
     if multi_years is None: # use the year specified in the config card
         launch_routine(global_cfg_base)
@@ -128,9 +134,11 @@ if __name__ == '__main__':
     parser.add_argument('--skip-coffea', action='store_true',
         help='If specified, skip running the coffea step and directly load the existing results (should guarantee that the coffea step has run before). '
              'Will overide the option in base config.')
+    parser.add_argument('--options', '-o', nargs=2, action='append', default=[],
+        help='pass the options to override the original value in the YAML card')
     parser.add_argument('--multi-years', '-y', nargs='+', type=str, default=None,
         help='Specify one or multiple year(s) options to run. Will overide the option in the config card.')
     args = parser.parse_args()
 
     # Launch all steps
-    launch(args.config_path, workers=args.workers, run_step=args.run_step, skip_coffea=args.skip_coffea, multi_years=args.multi_years)
+    launch(args.config_path, workers=args.workers, run_step=args.run_step, skip_coffea=args.skip_coffea, options=args.options, multi_years=args.multi_years)
