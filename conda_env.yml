@@ -85,4 +85,5 @@ dependencies:
     - uproot==4.2.2
     - uproot3==3.14.4
     - uproot3-methods==0.10.1
+    - xgboost==0.72.1
     - xxhash==3.0.0
