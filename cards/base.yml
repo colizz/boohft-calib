@@ -23,6 +23,7 @@ reuse_mc_weight_from_routine: null  # if specified, reuse the MC reweight factor
 # 3_tmpl_writer options
 skip_tmpl_writing: false  # if true, skip the template writing (used for Higgs Combine) during postprocessing
 skip_inclusive_plot_writing: false  # if true, skip writing the inclusive plots for visualization on webpage
+logmsv_div_by_binw: false  # if true, divide the event count by the bin width when making the log(mSV) histogram (the fit variable)
 
 # 4_fit options part A (control overall fit options before entering concurrent fit)
 test_n_fit: -1  # if specify positive number, will only run test_n_fit fits for test

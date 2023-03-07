@@ -381,6 +381,7 @@ class TmplWriterUnit(ProcessingUnit):
                         color_mc=color_mc, year=year, lumi=lumi,
                         flvbin=flvbin, iflvbin_order=iflvbin_order,
                         use_helvetica=self.global_cfg.use_helvetica,
+                        logmsv_div_by_binw=self.global_cfg.logmsv_div_by_binw,
                     )
                     h = self.result[f'hinc_{var}_pt{ptmin}to{ptmax}'].to_boost()
                     nbdt = len(self.coastline_map[ipt]['levels'])
@@ -498,12 +499,23 @@ def concurrent_inclusive_plot_writing_unit(arg):
         yerrlo_data = yerrhi_data = np.sqrt(h_data[bh.sum, :].variances())
         store_name = os.path.join(webdir, f'incl_{var}_csl{ibdt}_{args.year}_pt{ptmin}to{ptmax}')
 
-        make_generic_mc_data_plots(
-            edges, values_mc_list, yerr_mctot, values_data, yerrlo_data, yerrhi_data,
-            [f'MC ({args.flvbin[iflv]})' for iflv in args.iflvbin_order], args.color_mc,
-            xlabel, 'Events / bin', args.year, args.lumi,
-            use_helvetica=args.use_helvetica, plot_args=plot_args, store_name=store_name
-        )
+        if var == 'logmsv' and args.logmsv_div_by_binw:
+            for ar in values_mc_list + [yerr_mctot, values_data, yerrlo_data, yerrhi_data]:
+                ar[0] /= 4.; ar[1] /= 4.
+                ar[-2] /= 7.; ar[-1] /= 7.
+            make_generic_mc_data_plots(
+                edges, values_mc_list, yerr_mctot, values_data, yerrlo_data, yerrhi_data,
+                [f'MC ({args.flvbin[iflv]})' for iflv in args.iflvbin_order], args.color_mc,
+                xlabel, 'Events / 0.1', args.year, args.lumi,
+                use_helvetica=args.use_helvetica, plot_args=plot_args, store_name=store_name
+            )
+        else:
+            make_generic_mc_data_plots(
+                edges, values_mc_list, yerr_mctot, values_data, yerrlo_data, yerrhi_data,
+                [f'MC ({args.flvbin[iflv]})' for iflv in args.iflvbin_order], args.color_mc,
+                xlabel, 'Events / bin', args.year, args.lumi,
+                use_helvetica=args.use_helvetica, plot_args=plot_args, store_name=store_name
+            )
 
 
 def get_unit_template(bhs, wp, pt_lim, ibdt, w_untype, ipasswp, iflv, is_mc=True, is_incl=False, additional_options={}):
