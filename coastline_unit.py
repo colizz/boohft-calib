@@ -353,7 +353,7 @@ class CoastlineUnit(ProcessingUnit):
         tmin, tmax = self.global_cfg.tagger.span
         ax.plot(self.signal_hist_info['t_x'], self.signal_hist_info['t_y'], color='royalblue')
         ax.set_xlim(tmin, tmax); ax.set_ylim(0., 1.)
-        ax.set_xlabel('Tagger'); ax.set_ylabel('Transformed tagger')
+        ax.set_xlabel(getattr(self.global_cfg.tagger, "label", "Tagger")); ax.set_ylabel(f'Transformed {getattr(self.global_cfg.tagger, "label", "Tagger")}')
         ax.grid()
         ax.text(0.05, 0.92, 'Tagger transformation map', transform=ax.transAxes)
         plt.savefig(os.path.join(self.webdir, f'tagger_trans.png'))
@@ -364,7 +364,7 @@ class CoastlineUnit(ProcessingUnit):
         # then make signal shape on the original and transformed tagger, and positions of the WPs
         sig_effs = []
         for histname, desc, xlims, xtitle, color in zip(['hist', 'xhist'], ['original', 'transformed'], \
-            [(0., 1.), (tmin, tmax)], ['Tagger', 'Transformed tagger'], ['grey', 'royalblue']):
+            [(0., 1.), (tmin, tmax)], [getattr(self.global_cfg.tagger, "label", "Tagger"), f'Transformed {getattr(self.global_cfg.tagger, "label", "Tagger")}'], ['grey', 'royalblue']):
             f, ax = plt.subplots(figsize=(10, 10))
             hep.cms.label(data=True, llabel='Preliminary', year=year, ax=ax, rlabel=r'%s $fb^{-1}$ (13 TeV)' % lumi, fontname='sans-serif')
             h = self.signal_hist_info[histname]
@@ -418,7 +418,8 @@ class CoastlineUnit(ProcessingUnit):
             arr2d[arr2d == 0.] = np.nan # leave the pixel blank if no entry
             im = ax.imshow(arr2d[:, ::-1].T, norm=mpl.colors.LogNorm(), interpolation='nearest', extent=[0, 1, 0, 1], cmap=plt.cm.jet)
             f.colorbar(im, ax=ax)
-            ax.set_xlabel('Transformed tagger'); ax.set_ylabel('sfBDT')
+            ax.set_xlabel(f'Transformed {getattr(self.global_cfg.tagger, "label", "Tagger")}'); ax.set_ylabel('sfBDT')
+            ax.text(0.03, 0.93, '$p_T$: [{ptmin}, {ptmax}) GeV'.format(ptmin=ptmin, ptmax=ptmax if ptmax != 100000 else '+∞'), transform=ax.transAxes, fontweight='bold', fontsize=21)
 
             plt.savefig(os.path.join(self.webdir, f'h2d_{year}_pt{ptmin}to{ptmax}.png'))
             plt.savefig(os.path.join(self.webdir, f'h2d_{year}_pt{ptmin}to{ptmax}.pdf'))
@@ -438,6 +439,7 @@ class CoastlineUnit(ProcessingUnit):
             CS = ax.contour(X, Y, self.coastline_map[i]['arr2d_cum_smeared'], levels=self.coastline_map[i]['levels'])
             ax.clabel(CS, inline=0, fontsize=10)
             ax.set_xlabel('Transformed tagger'); ax.set_ylabel('sfBDT')
+            ax.text(0.03, 0.93, '$p_T$: [{ptmin}, {ptmax}) GeV'.format(ptmin=ptmin, ptmax=ptmax if ptmax != 100000 else '+∞'), transform=ax.transAxes, fontweight='bold', fontsize=21)
 
             plt.savefig(os.path.join(self.webdir, f'coastline_{year}_pt{ptmin}to{ptmax}.png'))
             plt.savefig(os.path.join(self.webdir, f'coastline_{year}_pt{ptmin}to{ptmax}.pdf'))

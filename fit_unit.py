@@ -23,6 +23,7 @@ import shutil
 import glob
 import json
 import os
+import re
 
 from unit import ProcessingUnit, StandaloneMultiThreadedUnit
 from utils.web_maker import WebMaker
@@ -92,6 +93,7 @@ class FitUnit(ProcessingUnit):
                 else ['flvL', 'flvB', 'flvC'] if self.global_cfg.type=='cc' else ['flvC', 'flvB', 'flvL'],
             unce_list=self.global_cfg.unce_list,
             xlabel=r'$log(m_{SV1,d_{xy}sig\,max}\; /GeV)$',
+            tagger_label=getattr(self.global_cfg.tagger, "label", "Tagger"),
         )
 
     def postprocess(self):
@@ -170,7 +172,7 @@ class FitUnit(ProcessingUnit):
         pt_list = [f'pt{ptmin}to{ptmax}' for ptmin, ptmax in zip(pt_edges[:-1], pt_edges[1:])]
         wps = self.global_cfg.tagger.wps
         pjoin = os.path.join
-        pt_title = lambda ptmin, ptmax: '[{ptmin}, {ptmax})'.format(ptmin=ptmin, ptmax=ptmax if ptmax!=100000 else '+inf')
+        pt_title = lambda ptmin, ptmax: '[{ptmin}, {ptmax})'.format(ptmin=ptmin, ptmax=ptmax if ptmax!=100000 else '+∞')
         for wp in wps:
             if wp not in self.global_cfg.default_wp_name_map:
                 self.global_cfg.default_wp_name_map[wp] = wp
@@ -317,7 +319,7 @@ class FitUnit(ProcessingUnit):
         center_fin, errl_fin, errh_fin = {}, {}, {} # reserve SF results used for write outer webpage
         ## Writing three webpages each for one fit scheme
         self.modes = ['main', 'sfbdt_rwgt', 'fit_var_rwgt']
-        self.mode_names = ['main scheme', 'sfBDT reweighting scheme', 'Fit variable reweighting scheme']
+        self.mode_names = ['main scheme', 'sfBDT reweighting scheme', 'fit variable reweighting scheme']
         for mode, mode_name in zip(self.modes, self.mode_names):
             _logger.debug(f'Origanizing webpage for mode: {mode}')
 
@@ -354,6 +356,9 @@ class FitUnit(ProcessingUnit):
                     fname = orig_path.rsplit('/', 1)[-1].split('.')[0] + suffix + '.' + orig_path.rsplit('/', 1)[-1].split('.')[1]
                     if os.path.isfile(orig_path):
                         shutil.copy2(orig_path, os.path.join(webdir_mode, fname)) # copy and rename to append the suffix
+                        if type == 'figure' and os.path.isfile(orig_path.rsplit('.', 1)[0] + '.pdf'):
+                            # also copy the pdf file in case of need
+                            shutil.copy2(orig_path.rsplit('.', 1)[0] + '.pdf', os.path.join(webdir_mode, fname.rsplit('.', 1)[0] + '.pdf'))
                     else:
                         _logger.error('File ' + orig_path + ' does not exists. This may occur if you choose not to launch the corresponding fit point or the fit fails.')
                     if type == 'figure':
@@ -475,10 +480,11 @@ class FitUnit(ProcessingUnit):
                 plot_xticklabels = ['[{ptmin}, {ptmax})'.format(ptmin=ptmin, ptmax=ptmax if ptmax!=100000 else r'$\infty$') for ptmin, ptmax in pt_edge_pairs]
                 plot_ylabel = f'SF (flv{sf_list[0]})'
                 plot_legends = list(wps.keys())
-                plot_text = mode_name
+                plot_text = f'{getattr(self.global_cfg.tagger, "label", "Tagger")} ({self.global_cfg.year})'
+                plot_subtext = f'Mode: {mode_name}'
                 plot_name = f'sf_summary_{sf_list[0]}_{mode}'
                 make_fit_summary_plots(center_fin[mode], errl_fin[mode], errh_fin[mode], self.webdir, self.fit_options,
-                    plot_xticklabels, plot_ylabel, plot_legends, plot_text, plot_name
+                    plot_xticklabels, plot_ylabel, plot_legends, plot_text, plot_subtext, plot_name
                 )
             else:
                 _logger.critical('Somehow the fit results for each scheme cannot be found. This should not happen.')
@@ -488,14 +494,15 @@ class FitUnit(ProcessingUnit):
         # Now let's write the outer webpage
         # Summarize all fit results and make plots
         if mode in center_fin.keys():
-            plot_text = 'Final set'
+            plot_text = f'{getattr(self.global_cfg.tagger, "label", "Tagger")} ({self.global_cfg.year})'
+            plot_subtext = 'Final set'
             plot_name = f'sf_summary_{sf_list[0]}_comb'
             center_comb = center_fin['main']
             maxdist = np.maximum(*tuple([np.abs(center_fin[m] - center_fin['main']) for m in ['sfbdt_rwgt', 'fit_var_rwgt']]))
             errl_comb = -np.hypot(errl_fin['main'], maxdist)
             errh_comb = np.hypot(errh_fin['main'], maxdist)
             make_fit_summary_plots(center_comb, errl_comb, errh_comb, self.webdir, self.fit_options,
-                plot_xticklabels, plot_ylabel, plot_legends, plot_text, plot_name
+                plot_xticklabels, plot_ylabel, plot_legends, plot_text, plot_subtext, plot_name
             )
         # Write contents on the outer webpage
         web.add_h1('Final SF results')
@@ -634,11 +641,17 @@ def concurrent_fit_unit(arg):
         if args.use_helvetica == True or (args.use_helvetica == 'auto' and any(['Helvetica' in font for font in mpl.font_manager.findSystemFonts()])):
             plt.style.use({"font.sans-serif": 'Helvetica'})
 
-        make_stacked_plots(inputdir, workdir, args, save_plots=True)
-        make_prepostfit_plots(inputdir, workdir, args, save_plots=True)
+        wp = re.findall('cards/(\w+)/', inputdir)[0]
+        ptmin, ptmax = list(map(int, re.findall('/pt(\d+)to(\d+)/', inputdir)[0]))
+        plot_options = dict(
+            plot_text=f'{args.tagger_label} ({wp})',
+            plot_subtext='$p_T$: [{ptmin}, {ptmax}) GeV'.format(ptmin=ptmin, ptmax=ptmax if ptmax != 100000 else '+∞'),
+        )
+        make_stacked_plots(inputdir, workdir, args, save_plots=True, **plot_options)
+        make_prepostfit_plots(inputdir, workdir, args, save_plots=True, **plot_options)
 
         for unce_type in args.unce_list:
-            make_shape_unce_plots(inputdir, workdir, args, unce_type=unce_type, save_plots=True)
+            make_shape_unce_plots(inputdir, workdir, args, unce_type=unce_type, save_plots=True, **plot_options)
 
     return (workdir, 0)
 

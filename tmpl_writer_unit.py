@@ -497,6 +497,8 @@ def concurrent_inclusive_plot_writing_unit(arg):
         values_data = h_data[bh.sum, :].values()
         yerr_mctot = np.sqrt(h_mc[bh.sum, :].variances())
         yerrlo_data = yerrhi_data = np.sqrt(h_data[bh.sum, :].variances())
+        plot_text = '$p_T$: [{ptmin}, {ptmax}) GeV'.format(ptmin=ptmin, ptmax=ptmax if ptmax != 100000 else '+∞')
+        plot_subtext = f'Coastline index: {ibdt+1} / {nbdt}' if ibdt != nbdt else 'Inclusive (no coastline selection)'
         store_name = os.path.join(webdir, f'incl_{var}_csl{ibdt}_{args.year}_pt{ptmin}to{ptmax}')
 
         if var == 'logmsv' and args.logmsv_div_by_binw:
@@ -507,14 +509,18 @@ def concurrent_inclusive_plot_writing_unit(arg):
                 edges, values_mc_list, yerr_mctot, values_data, yerrlo_data, yerrhi_data,
                 [f'MC ({args.flvbin[iflv]})' for iflv in args.iflvbin_order], args.color_mc,
                 xlabel, 'Events / 0.1', args.year, args.lumi,
-                use_helvetica=args.use_helvetica, plot_args=plot_args, store_name=store_name
+                use_helvetica=args.use_helvetica, plot_args=plot_args,
+                plot_text=plot_text, plot_subtext=plot_subtext,
+                store_name=store_name
             )
         else:
             make_generic_mc_data_plots(
                 edges, values_mc_list, yerr_mctot, values_data, yerrlo_data, yerrhi_data,
                 [f'MC ({args.flvbin[iflv]})' for iflv in args.iflvbin_order], args.color_mc,
                 xlabel, 'Events / bin', args.year, args.lumi,
-                use_helvetica=args.use_helvetica, plot_args=plot_args, store_name=store_name
+                use_helvetica=args.use_helvetica, plot_args=plot_args,
+                plot_text=plot_text, plot_subtext=plot_subtext,
+                store_name=store_name
             )
 
 

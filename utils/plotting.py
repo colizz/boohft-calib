@@ -7,6 +7,7 @@ import seaborn as sns
 from cycler import cycler 
 mpl.use('Agg')
 mpl.rcParams['axes.prop_cycle'] = cycler(color=['blue', 'red', 'green', 'violet', 'darkorange', 'black', 'cyan', 'yellow'])
+mpl.rcParams['figure.max_open_warning'] = 0
 import mplhep as hep
 plt.style.use(hep.style.CMS)
 
@@ -34,7 +35,7 @@ def plt_savefig_infinite(filename):
             time.sleep(random.random())
 
 
-def make_stacked_plots(inputdir, workdir, args, plot_unce=True, save_plots=True):
+def make_stacked_plots(inputdir, workdir, args, plot_unce=True, save_plots=True, **kwargs):
     r"""Make the stacked histograms for both pre-fit and post-fit based on the fitDiagnosticsTest.root
     Arguments:
         inputdir: Directory for input cards
@@ -45,6 +46,9 @@ def make_stacked_plots(inputdir, workdir, args, plot_unce=True, save_plots=True)
     ## Get the bin info based on workdir
     edges = uproot.open(f'{inputdir}/inputs_pass.root:data_obs').axis().edges()
     xmin, xmax, nbin = min(edges), max(edges), len(edges)
+    plot_text = kwargs.get('plot_text', None)
+    plot_subtext = kwargs.get('plot_subtext', None)
+
     # _logger.debug(f'Making stacked plots: {workdir}')
     
     ## All information read from fitDiagnosticsTest.root
@@ -75,6 +79,12 @@ def make_stacked_plots(inputdir, workdir, args, plot_unce=True, save_plots=True)
                 ax.set_ylim(0, 1.8*max(data))
             ax.legend()
 
+            if plot_text:
+                ax.text(0.03, 0.92, plot_text, transform=ax.transAxes, fontweight='bold', fontsize=21)
+            if plot_subtext:
+                ax.text(0.03, 0.86, plot_subtext + f', {b} region', transform=ax.transAxes, fontsize=20)
+                ax.text(0.03, 0.78, {'prefit': 'Pre-fit', 'postfit': 'Post-fit'}[title], transform=ax.transAxes, fontsize=20)
+
             ## Ratio panel
             ax1 = f.add_subplot(gs[1]); ax1.set_xlim(xmin, xmax); ax1.set_ylim(0.001, 1.999)
             ax1.set_xlabel(args.xlabel, ha='right', x=1.0); ax1.set_ylabel('Data / MC', ha='center')
@@ -94,11 +104,13 @@ def make_stacked_plots(inputdir, workdir, args, plot_unce=True, save_plots=True)
                 plt.close()
 
 
-def make_prepostfit_plots(inputdir, workdir, args, save_plots=True):
+def make_prepostfit_plots(inputdir, workdir, args, save_plots=True, **kwargs):
     r"""Make the prefit and postfit shape in one plot"""
 
     edges = uproot.open(f'{inputdir}/inputs_pass.root:data_obs').axis().edges()
     xmin, xmax, nbin = min(edges), max(edges), len(edges)
+    plot_text = kwargs.get('plot_text', None)
+    plot_subtext = kwargs.get('plot_subtext', None)
     # _logger.debug(f'Making pre/post fit plots: {workdir}')
 
     # All information read from fitDiagnosticsTest.root
@@ -129,13 +141,18 @@ def make_prepostfit_plots(inputdir, workdir, args, save_plots=True):
         plt.legend(handles=legend_eles, loc='upper left')
         plt.gca().add_artist(ax_style) # add the second legend
 
+        if plot_text:
+            ax.text(0.30, 0.94, plot_text, transform=ax.transAxes, fontweight='bold', fontsize=21)
+        if plot_subtext:
+            ax.text(0.30, 0.89, plot_subtext + f', {b} region', transform=ax.transAxes, fontsize=20)
+
         if save_plots:
             plt.savefig(f'{workdir}/prepostfit_{b}.png')
             plt_savefig_infinite(f'{workdir}/prepostfit_{b}.pdf')
             plt.close()
 
 
-def make_shape_unce_plots(inputdir, workdir, args, unce_type=None, save_plots=True, norm_unce=False):
+def make_shape_unce_plots(inputdir, workdir, args, unce_type=None, save_plots=True, norm_unce=False, **kwargs):
     r"""Make the shape comparison and/or the stacked histograms for a specific type of shape uncertainty based on the fitDiagnosticsTest.root
     
     Arguments:
@@ -148,6 +165,8 @@ def make_shape_unce_plots(inputdir, workdir, args, unce_type=None, save_plots=Tr
 
     edges = uproot.open(f'{inputdir}/inputs_pass.root:data_obs').axis().edges()
     xmin, xmax, nbin = min(edges), max(edges), len(edges)
+    plot_text = kwargs.get('plot_text', None)
+    plot_subtext = kwargs.get('plot_subtext', None)
     # _logger.debug(f'Making shape uncertainty plots: {workdir}')
 
     # curves for unce
@@ -170,10 +189,14 @@ def make_shape_unce_plots(inputdir, workdir, args, unce_type=None, save_plots=Tr
             hep.histplot(content_up[icat], bins=edges, label=f'MC ({cat}) {unce_type}Up {lab_suf}', color=color, linestyle='--')
         for icat, (cat, color) in enumerate(zip(args.cat_order[::-1], ['blue', 'red', 'green'])):
             hep.histplot(content_down[icat], bins=edges, label=f'MC ({cat}) {unce_type}Down {lab_suf}', color=color, linestyle=':')
-        ax.set_xlim(xmin, xmax); ax.set_ylim(0, ax.get_ylim()[1])
+        ax.set_xlim(xmin, xmax); ax.set_ylim(0, ax.get_ylim()[1]*1.3)
         ax.set_xlabel(args.xlabel, ha='right', x=1.0); ax.set_ylabel('Events / bin', ha='right', y=1.0)
         ax.legend(prop={'size': 18})
-        
+        if plot_text:
+            ax.text(0.03, 0.94, plot_text, transform=ax.transAxes, fontweight='bold', fontsize=21)
+        if plot_subtext:
+            ax.text(0.03, 0.89, plot_subtext + f', {b} region', transform=ax.transAxes, fontsize=20)
+
         if save_plots:
             plt.savefig(f'{workdir}/unce_comp_{unce_type}_{b}.png')
             plt_savefig_infinite(f'{workdir}/unce_comp_{unce_type}_{b}.pdf')
@@ -201,6 +224,8 @@ def make_generic_mc_data_plots(
     """
     use_helvetica = kwargs.get('use_helvetica', False)
     plot_args = kwargs.get('plot_args', {})
+    plot_text = kwargs.get('plot_text', None)
+    plot_subtext = kwargs.get('plot_subtext', None)
 
     def set_sns_color(*args):
         sns.palplot(sns.color_palette(*args))
@@ -236,6 +261,10 @@ def make_generic_mc_data_plots(
     else:
         ax.set_ylim(0, 1.8*max(values_data))
     ax.legend()
+    if plot_text:
+        ax.text(0.03, 0.92, plot_text, transform=ax.transAxes, fontweight='bold', fontsize=21)
+    if plot_subtext:
+        ax.text(0.03, 0.86, plot_subtext, transform=ax.transAxes, fontsize=20)
 
     ## Ratio panel
     ax1 = f.add_subplot(gs[1]); ax1.set_xlim(xmin, xmax); ax1.set_ylim(0.001, 1.999)
@@ -334,7 +363,7 @@ def make_sfbdt_variation_plot(center, errl, errh, c_idx, sf, outputdir, args, pl
     plt.close()
 
 
-def make_fit_summary_plots(center, errl, errh, outputdir, args, plot_xticklabels, plot_ylabel, plot_legends, plot_text, plot_name):
+def make_fit_summary_plots(center, errl, errh, outputdir, args, plot_xticklabels, plot_ylabel, plot_legends, plot_text, plot_subtext, plot_name):
     r"""Summarize the SFs in pT and WPs, for a specific fit scheme, in one plot.
 
     Arguments:
@@ -364,7 +393,10 @@ def make_fit_summary_plots(center, errl, errh, outputdir, args, plot_xticklabels
     ax.set_xlabel(r'$p_{T}$(j) [GeV]', ha='right', x=1.0); ax.set_ylabel(plot_ylabel, ha='right', y=1.0)
     ax.set_xlim(-0.5, len(plot_xticklabels)-0.5); ax.set_ylim(0., 2.)
     ax.set_xticks(x_ticks); ax.set_xticklabels(plot_xticklabels); ax.tick_params(axis='both', which='minor', bottom=False, top=False)
-    ax.text(0.05, 0.92, plot_text, transform=ax.transAxes, fontweight='bold') 
+    ax.text(0.05, 0.92, plot_text, transform=ax.transAxes, fontweight='bold', fontsize=24)
+    if plot_subtext:
+        ax.text(0.05, 0.85, plot_subtext, transform=ax.transAxes, fontsize=22)
+    
     ax.legend(loc='lower left')
 
     plt.savefig(os.path.join(outputdir, plot_name + '.png'))

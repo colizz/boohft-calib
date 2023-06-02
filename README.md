@@ -59,6 +59,8 @@ See detailed explanation in the example card [`cards/example_bb_PNetXbbVsQCD.yml
 
 v3.1.1 May 25, 2023
  - Update: increase the frac_b/c/light variation to 50%
+ - Update: in case of a fit failure, enlarge the autoMCStats threshold and retry
+ - Feature: more text on plots to make it readable
 
 v3.1.0 December 2, 2022
  - Feature: add new uncertainties sources

@@ -247,7 +247,8 @@ class MCReweightUnit(ProcessingUnit):
                 hep.histplot(hist['h_w'], bins=bins, label=f'Jet {i}', color=cm, ax=ax1)
 
             ax.set_xlim(0, 2500); ax.set_xticklabels([]); 
-            ax.set_yscale('log'); ax.set_ylabel('Events', ha='right', y=1.0)
+            ax.set_yscale('log'); ax.set_ylim(ax.get_ylim()[0], ax.get_ylim()[1]*10.); ax.set_ylabel('Events', ha='right', y=1.0)
+            ax.text(0.03, 0.91, '$p_T$: [{ptmin}, {ptmax}) GeV'.format(ptmin=ptmin, ptmax=ptmax if ptmax != 100000 else '+∞'), transform=ax.transAxes, fontweight='bold', fontsize=21)
             ax.legend()
             ax1.set_xlim(0, 2500); ax1.set_xlabel('$H_{T}$ [GeV]', ha='right', x=1.0);
             ax1.set_yscale('log'); ax1.set_ylim(5e-3, 2e0); ax1.set_ylabel('Rwgt factor', ha='right', y=1.0); ax1.set_yticks([1e-2, 1e-1, 1e0, 1e1]);
