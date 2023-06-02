@@ -5,10 +5,13 @@ The tool runs under the Run 2 UL condition using NanoAODv9.
 It is designed for the calibration of any Xbb/Xcc type taggers composed of the branches in NanoAODv9. 
 
 Users should specify in a data card the tagger expression, pre-defined WPs, etc., and a signal ROOT tree for extraction of the necessary signal tagger shape.
-See details in the [example data card](cards/example_bb_PNetXbbVsQCD.yml) for calibrating the ParticleNet XbbVsQCD score.
+See details in the [example YMAL card](cards/example_bb_PNetXbbVsQCD.yml) for calibrating the ParticleNet XbbVsQCD score.
 
-The introduction of the method can be found in the [latest BTV slides](https://indico.cern.ch/event/1120932/#23-calibration-of-ul20172018-x).
-Detailed documentation is provided in [AN-21-005](https://cms.cern.ch/iCMS/jsp/db_notes/noteInfo.jsp?cmsnoteid=CMS%20AN-2021/005) (the current AN is not up to date).
+The introduction of the method can be found in the [BTV slides](https://indico.cern.ch/event/1120932/#23-calibration-of-ul20172018-x).
+Detailed documentation is provided in [AN-21-005](https://cms.cern.ch/iCMS/jsp/db_notes/noteInfo.jsp?cmsnoteid=CMS%20AN-2021/005) (the sfBDT method).
+
+The calibration results and all final & intermediate plots are showcased on the webpage, automatically generated after running a routine piloted by a YAML card.
+To see the example of the generated webpage, please refer to the above BTV slides.
 
 ## Run the tool
 
