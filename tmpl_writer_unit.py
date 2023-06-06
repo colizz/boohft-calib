@@ -153,14 +153,14 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
                 weight_base = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeight*l1PreFiringWeight*{lumi}', events_fj)
                 weight['nominal'] = weight_base * mc_weight
                 weight['fracBCLUp'] = weight['nominal'] * ak.numexpr.evaluate(
-                    f'(fj_{i}_nbhadrons>=1) * (1.5*(fj_{i}_nbhadrons>1) + 1.5*(fj_{i}_nbhadrons<=1)) + ' + \
-                    f'((fj_{i}_nbhadrons==0) & (fj_{i}_nchadrons>=1)) * (1.5*(fj_{i}_nchadrons>1) + 1.5*(fj_{i}_nchadrons<=1)) + ' + \
-                    f'((fj_{i}_nbhadrons==0) & (fj_{i}_nchadrons==0)) * (1.5)', events_fj
+                    f'(fj_{i}_nbhadrons>=1) * (1.2*(fj_{i}_nbhadrons>1) + 1.2*(fj_{i}_nbhadrons<=1)) + ' + \
+                    f'((fj_{i}_nbhadrons==0) & (fj_{i}_nchadrons>=1)) * (1.2*(fj_{i}_nchadrons>1) + 1.2*(fj_{i}_nchadrons<=1)) + ' + \
+                    f'((fj_{i}_nbhadrons==0) & (fj_{i}_nchadrons==0)) * (1.2)', events_fj
                 )
                 weight['fracBCLDown'] = weight['nominal'] * ak.numexpr.evaluate(
-                    f'(fj_{i}_nbhadrons>=1) * (0.5*(fj_{i}_nbhadrons>1) + 0.5*(fj_{i}_nbhadrons<=1)) + ' + \
-                    f'((fj_{i}_nbhadrons==0) & (fj_{i}_nchadrons>=1)) * (0.5*(fj_{i}_nchadrons>1) + 0.5*(fj_{i}_nchadrons<=1)) + ' + \
-                    f'((fj_{i}_nbhadrons==0) & (fj_{i}_nchadrons==0)) * (0.5)', events_fj
+                    f'(fj_{i}_nbhadrons>=1) * (0.8*(fj_{i}_nbhadrons>1) + 0.8*(fj_{i}_nbhadrons<=1)) + ' + \
+                    f'((fj_{i}_nbhadrons==0) & (fj_{i}_nchadrons>=1)) * (0.8*(fj_{i}_nchadrons>1) + 0.8*(fj_{i}_nchadrons<=1)) + ' + \
+                    f'((fj_{i}_nbhadrons==0) & (fj_{i}_nchadrons==0)) * (0.8)', events_fj
                 )
                 weight['puUp'] = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeightUp*l1PreFiringWeight*{lumi}', events_fj) * mc_weight
                 weight['puDown'] = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeightDown*l1PreFiringWeight*{lumi}', events_fj) * mc_weight
