@@ -48,6 +48,7 @@ def make_stacked_plots(inputdir, workdir, args, plot_unce=True, save_plots=True,
     xmin, xmax, nbin = min(edges), max(edges), len(edges)
     plot_text = kwargs.get('plot_text', None)
     plot_subtext = kwargs.get('plot_subtext', None)
+    logmsv_div_by_binw = kwargs.get('logmsv_div_by_binw', False)
 
     # _logger.debug(f'Making stacked plots: {workdir}')
     
@@ -63,16 +64,27 @@ def make_stacked_plots(inputdir, workdir, args, plot_unce=True, save_plots=True,
             ax = f.add_subplot(gs[0])
             hep.cms.label(data=True, llabel='Preliminary', year=args.year, ax=ax, rlabel=r'%s $fb^{-1}$ (13 TeV)' % args.lumi, fontname='sans-serif')
             ax.set_xlim(xmin, xmax); ax.set_xticklabels([]); 
-            ax.set_ylabel('Events / bin', ha='right', y=1.0)
+            ax.set_ylabel('Events / bin' if not logmsv_div_by_binw else 'Events / bin width × 0.1', ha='right', y=1.0)
 
             content = [fit[f'{rootdir}/{b}/{cat}'].values() for cat in args.cat_order]
-            hep.histplot(content, bins=edges, label=[f'MC ({cat})' for cat in args.cat_order], histtype='fill', edgecolor='k', linewidth=1, stack=True) ## draw MC
             bkgtot, bkgtot_err = fit[f'{rootdir}/{b}/total'].values(), np.sqrt(fit[f'{rootdir}/{b}/total'].variances())
+            if logmsv_div_by_binw:
+                # have to divide the yield by binwidth in place
+                for value in content + [bkgtot, bkgtot_err]:
+                    for i in range(len(value)):
+                        value[i] /= ((edges[i+1] - edges[i]) / 0.1) # base binwidth is 0.1
+
+            hep.histplot(content, bins=edges, label=[f'MC ({cat})' for cat in args.cat_order], histtype='fill', edgecolor='k', linewidth=1, stack=True) ## draw MC
             if plot_unce:
                 ax.fill_between(edges, (bkgtot-bkgtot_err).tolist()+[0], (bkgtot+bkgtot_err).tolist()+[0], label='BKG total unce.', 
                                 step='post', hatch='\\\\', edgecolor='dimgrey', facecolor='none', linewidth=0
                                 ) ## draw bkg unce.
             data, data_errh, data_errl = fit[f'{rootdir}/{b}/data'].values(1), fit[f'{rootdir}/{b}/data'].errors('high')[1], fit[f'{rootdir}/{b}/data'].errors('low')[1]
+            if logmsv_div_by_binw:
+                for value in [data, data_errh, data_errl]:
+                    for i in range(len(value)):
+                        value[i] /= ((edges[i+1] - edges[i]) / 0.1) # base binwidth is 0.1
+
             hep.histplot(data, yerr=(data_errl, data_errh), bins=edges, label='Data', histtype='errorbar', color='k', markersize=15, elinewidth=1.5) ## draw data
             ax.set_ylim(0, ax.get_ylim()[1])
             if plot_unce:

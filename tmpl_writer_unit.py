@@ -502,13 +502,14 @@ def concurrent_inclusive_plot_writing_unit(arg):
         store_name = os.path.join(webdir, f'incl_{var}_csl{ibdt}_{args.year}_pt{ptmin}to{ptmax}')
 
         if var == 'logmsv' and args.logmsv_div_by_binw:
-            for ar in values_mc_list + [yerr_mctot, values_data, yerrlo_data, yerrhi_data]:
-                ar[0] /= 4.; ar[1] /= 4.
-                ar[-2] /= 7.; ar[-1] /= 7.
+            # have to divide the yield by binwidth in place
+            for value in values_mc_list + [yerr_mctot, values_data, yerrlo_data, yerrhi_data]:
+                for i in range(len(value)):
+                    value[i] /= ((edges[i+1] - edges[i]) / 0.1) # base binwidth is 0.1
             make_generic_mc_data_plots(
                 edges, values_mc_list, yerr_mctot, values_data, yerrlo_data, yerrhi_data,
                 [f'MC ({args.flvbin[iflv]})' for iflv in args.iflvbin_order], args.color_mc,
-                xlabel, 'Events / 0.1', args.year, args.lumi,
+                xlabel, 'Events / bin width × 0.1', args.year, args.lumi,
                 use_helvetica=args.use_helvetica, plot_args=plot_args,
                 plot_text=plot_text, plot_subtext=plot_subtext,
                 store_name=store_name

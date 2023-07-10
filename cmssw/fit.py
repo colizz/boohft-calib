@@ -17,6 +17,7 @@ parser.add_argument('inputdir', help='Input directory')
 parser.add_argument('workdir', help='Working directory for the fit')
 parser.add_argument('--type', default=None, choices=['bb', 'cc', 'qq'], help='bb, cc, or qq calibration type')
 parser.add_argument('--mode', default=None, choices=['main', 'sfbdt_rwgt', 'fit_var_rwgt'], help='fit schemes in controlling the nuiences.')
+parser.add_argument('--year', default=None, choices=['2016APV', '2016', '2017', '2018'], help='year condition of the fit')
 parser.add_argument('--ext-unce', default=None, help='Extra uncertainty term to run or term to be excluded. e.g. --ext-unce NewTerm1,NewTerm2,~ExcludeTerm1')
 parser.add_argument('--bound', default=None, help='Set the bound of three SFs, e.g. --bound 0.5,2 (which are the default values)')
 parser.add_argument('--run-impact', action='store_true', help='Run impact plots.')
@@ -87,7 +88,7 @@ if args.ext_unce is not None:
 for syst in shapeSysts:
     cb.cp().process(shapeSysts[syst]).AddSyst(cb, syst, 'shape', ch.SystMap()(1.0))
 
-cb.cp().AddSyst(cb, 'lumi_13TeV', 'lnN', ch.SystMap()(1.025))
+cb.cp().AddSyst(cb, 'lumi_13TeV', 'lnN', ch.SystMap()({'2016APV': 1.012, '2016': 1.012, '2017': 1.023, '2018': 1.025}[args.year]))
 
 for bin in bins:
     cb.cp().bin([bin]).ExtractShapes(

@@ -94,6 +94,7 @@ class FitUnit(ProcessingUnit):
             unce_list=self.global_cfg.unce_list,
             xlabel=r'$log(m_{SV1,d_{xy}sig\,max}\; /GeV)$',
             tagger_label=getattr(self.global_cfg.tagger, "label", "Tagger"),
+            logmsv_div_by_binw=self.global_cfg.logmsv_div_by_binw,
         )
 
     def postprocess(self):
@@ -628,9 +629,9 @@ def concurrent_fit_unit(arg):
                 ext_args += '--run-impact --run-unce-breakdown '
             if args.run_full_unce_breakdown_for_central_fit and mode == 'main':
                 ext_args += '--run-full-unce-breakdown '
-            out, ret = runcmd(f"bash cmssw/launch_fit.sh {inputdir} {workdir} --type={args.type} --mode={mode} {ext_args}")
+            out, ret = runcmd(f"bash cmssw/launch_fit.sh {inputdir} {workdir} --year={args.year} --type={args.type} --mode={mode} {ext_args}")
         else:
-            out, ret = runcmd(f"bash cmssw/launch_fit.sh {inputdir} {workdir} --type={args.type} --mode={mode}")
+            out, ret = runcmd(f"bash cmssw/launch_fit.sh {inputdir} {workdir} --year={args.year} --type={args.type} --mode={mode}")
         if ret != 0:
             _logger.error("Error running the fit point: " + workdir + "\n" + \
                 "See the following output (from last few lines):\n\n" + '\n'.join(out.splitlines()[-20:]))
@@ -646,6 +647,7 @@ def concurrent_fit_unit(arg):
         plot_options = dict(
             plot_text=f'{args.tagger_label} ({wp})',
             plot_subtext='$p_T$: [{ptmin}, {ptmax}) GeV'.format(ptmin=ptmin, ptmax=ptmax if ptmax != 100000 else '+∞'),
+            logmsv_div_by_binw=args.logmsv_div_by_binw,
         )
         make_stacked_plots(inputdir, workdir, args, save_plots=True, **plot_options)
         make_prepostfit_plots(inputdir, workdir, args, save_plots=True, **plot_options)
