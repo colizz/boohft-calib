@@ -60,6 +60,10 @@ See detailed explanation in the example card [`cards/example_bb_PNetXbbVsQCD.yml
 --------
 ## Update notes
 
+v3.1.2 July 21, 2023
+ - Update: fix lumi uncertainty
+ - Update: apply no JERC correction to SV mass
+
 v3.1.1 May 25, 2023
  - Update: change the 20% frac_b/c/light variation in an overall manner (sync with mu-tagged method)
  - Update: in case of a fit failure, enlarge the autoMCStats threshold and retry

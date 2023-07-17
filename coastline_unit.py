@@ -289,7 +289,7 @@ class CoastlineUnit(ProcessingUnit):
             # smear the 2d hist with gaussian filter
             arr2d_cum_expend = np.zeros((arr2d_cum.shape[0], arr2d_cum.shape[1] + nstep_extend))
             arr2d_cum_expend[:, :-nstep_extend] = arr2d_cum
-            arr2d_cum_smeared = scipy.ndimage.gaussian_filter(arr2d_cum_expend, sigma=5)[:, :-nstep_extend]
+            arr2d_cum_smeared = scipy.ndimage.gaussian_filter(arr2d_cum_expend, sigma=10)[:, :-nstep_extend]
             arr2d_cum_smeared[:, -1] = 0.
 
             # define end point for the contour

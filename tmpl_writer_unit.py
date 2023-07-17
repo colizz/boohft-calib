@@ -212,7 +212,6 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
                             pt_corr = events_fj[f'fj_{i}_pt'] * events_fj[f'fj_{i}{suffix_to_branch[untype]}']
                             ht_corr = events_fj[f'ht{suffix_to_branch[untype]}']
                             ptsel_corr = (pt_corr >= ptmin) & (pt_corr < ptmax)
-                            logmsv_corr = np.log(np.maximum(msv * events_fj[f'fj_{i}{suffix_to_branch[untype]}'], 1e-20))
                             weight_corr = weight_base * self.lookup_mc_weight(f'fj{i}', pt_corr, ht_corr, read_suffix=f'_{untype}') # use JES/JER reweight map and corrected HT & pT variables
                             if untype not in sfbdt_corr_cache.keys():
                                 assert self.global_cfg.custom_sfbdt_path is not None, \
@@ -232,7 +231,7 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
                                 flv=isB[ptsel_corr] * 1 + isC[ptsel_corr] * 2,
                                 passwp=passwp[wp][ptsel_corr],
                                 coastline=coastline_ptsel_corr,
-                                logmsv=logmsv_corr[ptsel_corr],
+                                logmsv=logmsv[ptsel_corr],
                                 weight=weight_corr[ptsel_corr]
                             )
 
