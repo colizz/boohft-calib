@@ -196,19 +196,19 @@ if args.run_full_unce_breakdown:
     assert args.mode == 'main', '--run-full-unce-breakdown only works with --mode=main'
     cmd = '''
 cd {workdir} && \
-combine -M MultiDimFit -m 125 SF.root --algo=grid --robustFit=1 --points=50 -n Grid --redefineSignalPOIs SF_{flv_poi1} {ext_fit_options} && \
-combine -M MultiDimFit -m 125 SF.root --algo=singles --robustFit=1 -n Bestfit --saveWorkspace {ext_fit_options} &&
+combine -M MultiDimFit -m 125 SF.root --algo=grid --robustFit=1 --points=50 -n Grid --redefineSignalPOIs SF_{flv_poi1} {ext_fit_options} > full_unce.log 2>&1 && \
+combine -M MultiDimFit -m 125 SF.root --algo=singles --robustFit=1 -n Bestfit --saveWorkspace {ext_fit_options} >> full_unce.log 2>&1 &&
 '''.format(workdir=args.workdir, flv_poi1=flv_poi1, ext_fit_options=ext_fit_options)
     comb_plot_opt = []
     syst_list_iter = syst_list[::-1] # make sure no sfBDTRwgt, fitVarRwgt in syst_list in the main routine
     for i in range(len(syst_list_iter)):
         params = ','.join(syst_list_iter[:i+1])
         suffix = 'freeze_till_{syst}'.format(syst=syst_list_iter[i])
-        cmd += 'combine -M MultiDimFit -m 125 --algo=grid --points=50 higgsCombineBestfit.MultiDimFit.mH125.root --redefineSignalPOIs SF_{flv_poi1} --snapshotName MultiDimFit --freezeParameters {params} -n {suffix} && \n'.format(
+        cmd += 'combine -M MultiDimFit -m 125 --algo=grid --points=50 higgsCombineBestfit.MultiDimFit.mH125.root --redefineSignalPOIs SF_{flv_poi1} --snapshotName MultiDimFit --freezeParameters {params} -n {suffix} >> full_unce.log 2>&1 && \n'.format(
             flv_poi1=flv_poi1, params=params, suffix=suffix
         )
         comb_plot_opt.append('higgsCombine{suffix}.MultiDimFit.mH125.root:{suffix}:{i}'.format(suffix=suffix, i=i+2))
-    cmd += 'plot1DScanWithOutput.py higgsCombineGrid.MultiDimFit.mH125.root --others {others_params} --POI SF_{flv_poi1} -o full_unce_breakdown --breakdown {breakdown}'.format(
+    cmd += 'plot1DScanWithOutput.py higgsCombineGrid.MultiDimFit.mH125.root --others {others_params} --POI SF_{flv_poi1} -o full_unce_breakdown --breakdown {breakdown} >> full_unce.log 2>&1'.format(
         flv_poi1=flv_poi1, others_params=' '.join(comb_plot_opt), breakdown=','.join(syst_list_iter)+',stats'
     ) # note: stats includes both MC and data stats
     runcmd(cmd)
