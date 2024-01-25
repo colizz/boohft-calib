@@ -55,7 +55,7 @@ class CoastlineCoffeaProcessor(processor.ProcessorABC):
         dataset = hist.Cat("dataset", "dataset")
 
         # fine 2D grids on tagger-sfBDT to derive the coastline
-        pt_bin = hist.Bin('pt', 'pt', list(global_cfg.pt_edges))
+        pt_bin = hist.Bin('pt', 'pt', list(global_cfg.pt_edges) + [100000])
         sfbdt_grid = hist.Bin('sfbdt', 'sfbdt', self.nbin2d, 0., 1.)
         xtagger_grid = hist.Bin('xtagger', 'xtagger', self.nbin2d, 0., 1.) # transformed tagger bin
         h2d_grid = hist.Hist('Counts', dataset, pt_bin, sfbdt_grid, xtagger_grid)
