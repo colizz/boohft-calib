@@ -19,7 +19,8 @@ parser.add_argument('--type', default=None, choices=['bb', 'cc', 'qq'], help='bb
 parser.add_argument('--mode', default=None, choices=['main', 'sfbdt_rwgt', 'fit_var_rwgt'], help='fit schemes in controlling the nuiences.')
 parser.add_argument('--year', default=None, choices=['2016APV', '2016', '2017', '2018'], help='year condition of the fit')
 parser.add_argument('--ext-unce', default=None, help='Extra uncertainty term to run or term to be excluded. e.g. --ext-unce NewTerm1,NewTerm2,~ExcludeTerm1')
-parser.add_argument('--bound', default=None, help='Set the bound of three SFs, e.g. --bound 0.5,2 (which are the default values)')
+parser.add_argument('--bound', default=None, help='Set the bound of three SFs. In TagAndProbeExtendedV2, the default value --bound 0.5,2 is taken')
+parser.add_argument('--bound-main-poi', default=None, help='Additionally set the bound of the main POI SF. In TagAndProbeExtendedV2, it is not set and the same --bound value is used')
 parser.add_argument('--run-impact', action='store_true', help='Run impact plots.')
 parser.add_argument('--run-unce-breakdown', action='store_true', help='Run uncertainty breakdown')
 parser.add_argument('--run-full-unce-breakdown', action='store_true', help='Run full uncertainty breakdown')
@@ -137,7 +138,12 @@ def runcmd(cmd, shell=True):
     out, _ = p.communicate()
     return (out, p.returncode)
 
-ext_po = '' if args.bound is None else '--PO bound='+args.bound
+ext_po = ' '
+if args.bound:
+    ext_po += '--PO bound=' + args.bound + ' '
+if args.bound_main_poi:
+    ext_po += '--PO boundMainPOI=' + args.bound_main_poi + ' '
+
 if args.mode == 'main':
     ext_fit_options = ''
 elif args.mode == 'sfbdt_rwgt':
