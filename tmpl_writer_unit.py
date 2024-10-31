@@ -143,6 +143,7 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
                 sfbdt = events_fj[f'fj_{i}_sfBDT']
             sfbdt_corr_cache = {} # prepared for JES/JER corrected version of sfBDT
             tagger = ak.numexpr.evaluate(self.tagger_expr.replace('fj_x', f'fj_{i}'), events_fj)
+            tagger = np.clip(tagger, *self.global_cfg.tagger.span)
             xtagger = self.xtagger_map(tagger)
 
             # calculate weights in multiple senerios

@@ -33,6 +33,8 @@ do_fit_var_rwgt_fit: true # similar for running fit points in fit_var_rwgt schem
 run_central_fit_only: false  # if true, only run the central sfBDT fit for each pT and tagger WP
 
 # 4_fit options part B (for fit details in each single fit job)
+set_bounds: null  # if specified, set the boundaries for all POIs in the fit. Syntax: [lower, upper]
+set_bounds_main_poi: null  # if specified, set the boundaries for the main POIs in the fit. Syntax: [lower, upper]
 skip_fit: false  # if true, skip the fit and directly go to plot making with existing results
 run_impact_for_central_fit: true  # when true, also run impact and uncertainty break down for the central fit, which can be more time costly
 run_full_unce_breakdown_for_central_fit: true  # when true, also run full uncertainty break down for the central fit, and get the unce contribution from each source

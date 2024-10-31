@@ -118,6 +118,10 @@ class CoastlineCoffeaProcessor(processor.ProcessorABC):
                 sfbdt = events_fj[f'fj_{i}_sfBDT']
             if is_mc:
                 tagger_flv_sel = ak.numexpr.evaluate(self.tagger_expr.replace('fj_x', f'fj_{i}'), events_fj[flv_sel])
+                # check how many event are beyond the tagger span
+                if (np.sum(tagger_flv_sel < self.global_cfg.tagger.span[0]) + np.sum(tagger_flv_sel > self.global_cfg.tagger.span[1])) / len(tagger_flv_sel) > 0.01:
+                    _logger.warning(f"More than 1% of events are beyond the tagger span {self.global_cfg.tagger.span}. Is it expected?")
+                tagger_flv_sel = np.clip(tagger_flv_sel, *self.global_cfg.tagger.span)
                 xtagger_flv_sel = self.xtagger_map(tagger_flv_sel)
                 out[f'h2d_grid'].fill(
                     dataset=dataset,

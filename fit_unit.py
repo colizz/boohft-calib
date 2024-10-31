@@ -87,6 +87,8 @@ class FitUnit(ProcessingUnit):
             skip_fit=self.global_cfg.skip_fit,
             run_impact_for_central_fit=self.global_cfg.run_impact_for_central_fit,
             run_full_unce_breakdown_for_central_fit=self.global_cfg.run_full_unce_breakdown_for_central_fit,
+            set_bounds=self.global_cfg.set_bounds,
+            set_bounds_main_poi=self.global_cfg.set_bounds_main_poi,
             use_helvetica=self.global_cfg.use_helvetica,
             color_order=sns.color_palette('cubehelix', 3),
             cat_order=['flvL', 'flvC', 'flvB'] if self.global_cfg.type=='bb' \
@@ -314,9 +316,6 @@ class FitUnit(ProcessingUnit):
             return np.array(s_centers_all), np.array(s_errls_all), np.array(s_errhs_all)
 
 
-        ## Initialize a webpage instance
-        web = WebMaker(self.job_name)
-
         center_fin, errl_fin, errh_fin = {}, {}, {} # reserve SF results used for write outer webpage
         ## Writing three webpages each for one fit scheme
         self.modes = ['main', 'sfbdt_rwgt', 'fit_var_rwgt']
@@ -346,8 +345,8 @@ class FitUnit(ProcessingUnit):
                         _logger.error(f'multifit failed... ', wp, 'central SFs: ', center)
 
                 ## include an extra table for merging all sfBDT variation results
-                if sf == sf_list[0] or self.global_cfg.show_sfbdt_variation_all_flavour:
-                    # merge_sfbdt_variation_margins(web_mode, mode, sf) ## previously adopted, sometimes not stable
+                if sf == sf_list[0]:
+                # merge_sfbdt_variation_margins(web_mode, mode, sf) ## previously adopted, sometimes not stable
                     center_fin[mode], errl_fin[mode], errh_fin[mode] = merge_sfbdt_variation_smearing(web_mode, mode, sf) # we will take these SFs to the summary
 
 
@@ -476,35 +475,34 @@ class FitUnit(ProcessingUnit):
             web_mode.write_to_file(webdir_mode)
 
             # Make the summary plot for SFs in this mode
-            if mode in center_fin.keys(): # we have stored the eventual SFs for this mode during the processing
-                _logger.debug(f'Making summary fit plots for mode: {mode}')
-                plot_xticklabels = ['[{ptmin}, {ptmax})'.format(ptmin=ptmin, ptmax=ptmax if ptmax!=100000 else r'$\infty$') for ptmin, ptmax in pt_edge_pairs]
-                plot_ylabel = f'SF (flv{sf_list[0]})'
-                plot_legends = list(wps.keys())
-                plot_text = f'{getattr(self.global_cfg.tagger, "label", "Tagger")} ({self.global_cfg.year})'
-                plot_subtext = f'Mode: {mode_name}'
-                plot_name = f'sf_summary_{sf_list[0]}_{mode}'
-                make_fit_summary_plots(center_fin[mode], errl_fin[mode], errh_fin[mode], self.webdir, self.fit_options,
-                    plot_xticklabels, plot_ylabel, plot_legends, plot_text, plot_subtext, plot_name
-                )
-            else:
-                _logger.critical('Somehow the fit results for each scheme cannot be found. This should not happen.')
+            _logger.debug(f'Making summary fit plots for mode: {mode}')
+            plot_xticklabels = ['[{ptmin}, {ptmax})'.format(ptmin=ptmin, ptmax=ptmax if ptmax!=100000 else r'$\infty$') for ptmin, ptmax in pt_edge_pairs]
+            plot_ylabel = f'SF (flv{sf_list[0]})'
+            plot_legends = list(wps.keys())
+            plot_text = f'{getattr(self.global_cfg.tagger, "label", "Tagger")} ({self.global_cfg.year})'
+            plot_subtext = f'Mode: {mode_name}'
+            plot_name = f'sf_summary_{sf_list[0]}_{mode}'
+            make_fit_summary_plots(center_fin[mode], errl_fin[mode], errh_fin[mode], self.webdir, self.fit_options,
+                plot_xticklabels, plot_ylabel, plot_legends, plot_text, plot_subtext, plot_name
+            )
 
         # end of mode for-loop
         
         # Now let's write the outer webpage
+        ## Initialize a webpage instance
+        web = WebMaker(self.job_name)
+
         # Summarize all fit results and make plots
-        if mode in center_fin.keys():
-            plot_text = f'{getattr(self.global_cfg.tagger, "label", "Tagger")} ({self.global_cfg.year})'
-            plot_subtext = 'Final set'
-            plot_name = f'sf_summary_{sf_list[0]}_comb'
-            center_comb = center_fin['main']
-            maxdist = np.maximum(*tuple([np.abs(center_fin[m] - center_fin['main']) for m in ['sfbdt_rwgt', 'fit_var_rwgt']]))
-            errl_comb = -np.hypot(errl_fin['main'], maxdist)
-            errh_comb = np.hypot(errh_fin['main'], maxdist)
-            make_fit_summary_plots(center_comb, errl_comb, errh_comb, self.webdir, self.fit_options,
-                plot_xticklabels, plot_ylabel, plot_legends, plot_text, plot_subtext, plot_name
-            )
+        plot_text = f'{getattr(self.global_cfg.tagger, "label", "Tagger")} ({self.global_cfg.year})'
+        plot_subtext = 'Final set'
+        plot_name = f'sf_summary_{sf_list[0]}_comb'
+        center_comb = center_fin['main']
+        maxdist = np.maximum(*tuple([np.abs(center_fin[m] - center_fin['main']) for m in ['sfbdt_rwgt', 'fit_var_rwgt']]))
+        errl_comb = -np.hypot(errl_fin['main'], maxdist)
+        errh_comb = np.hypot(errh_fin['main'], maxdist)
+        make_fit_summary_plots(center_comb, errl_comb, errh_comb, self.webdir, self.fit_options,
+            plot_xticklabels, plot_ylabel, plot_legends, plot_text, plot_subtext, plot_name
+        )
         # Write contents on the outer webpage
         web.add_h1('Final SF results')
         web.add_h2(sf_title[sf_list[0]])
@@ -623,15 +621,21 @@ def concurrent_fit_unit(arg):
     # 1. Launch the fit
     if not args.skip_fit:
         # _logger.debug("Run fit point " + workdir)
+        ext_args = ''
         if is_central:
-            ext_args = ''
             if args.run_impact_for_central_fit:
                 ext_args += '--run-impact --run-unce-breakdown '
             if args.run_full_unce_breakdown_for_central_fit and mode == 'main':
                 ext_args += '--run-full-unce-breakdown '
-            out, ret = runcmd(f"bash cmssw/launch_fit.sh {inputdir} {workdir} --year={args.year} --type={args.type} --mode={mode} {ext_args}")
-        else:
-            out, ret = runcmd(f"bash cmssw/launch_fit.sh {inputdir} {workdir} --year={args.year} --type={args.type} --mode={mode}")
+        if args.set_bounds is not None:
+            assert isinstance(args.set_bounds, list) and len(args.set_bounds) == 2
+            lower, upper = args.set_bounds
+            ext_args += f'--bound={lower},{upper} '
+        if args.set_bounds_main_poi is not None:
+            assert isinstance(args.set_bounds_main_poi, list) and len(args.set_bounds_main_poi) == 2
+            lower, upper = args.set_bounds_main_poi
+            ext_args += f'--bound-main-poi={lower},{upper} '
+        out, ret = runcmd(f"bash cmssw/launch_fit.sh {inputdir} {workdir} --year={args.year} --type={args.type} --mode={mode} {ext_args}")
         if ret != 0:
             _logger.error("Error running the fit point: " + workdir + "\n" + \
                 "See the following output (from last few lines):\n\n" + '\n'.join(out.splitlines()[-20:]))

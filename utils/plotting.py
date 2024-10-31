@@ -311,15 +311,15 @@ def make_sfbdt_variation_plot(center, errl, errh, c_idx, sf, outputdir, args, pl
     Arguments:
         center, errl, errh: list of array of SFs with errorbars
         c_idx, index of the central SF in the list
-        sf: SF type (bb, cc, or qq) that controls the color and range of the plot
+        sf: SF type (B, C, L) that controls the color and range of the plot
     """
     from matplotlib.collections import PatchCollection
     from matplotlib.patches import Rectangle
-    if sf == args.cat_order[-1][-1]:
+    if sf == 'B':
         ymin, ymax, facecolor = 0.5, 1.5, 'yellow'
-    elif sf == args.cat_order[-2][-1]:
+    elif sf == 'C':
         ymin, ymax, facecolor = 0., 3.0, 'greenyellow'
-    elif sf == args.cat_order[-3][-1]:
+    elif sf == 'L':
         ymin, ymax, facecolor = 0., 3.0, 'skyblue'
 
     def make_error_boxes(ax, xdata, ydata, xerror, yerror, facecolor='r', edgecolor=None, alpha=0.5, label=None):
