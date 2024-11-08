@@ -1,14 +1,14 @@
 ## This card includes all base configurations for the tool
 ## Please do not modify the content here but instead rewrite the item in the calibration config cards
 
-version: v3.1.2
+version: v3.1.3
 
 ##############################
 ## Configuration on modules ##
 ##############################
 
 # overall configuration
-workers: [8, 8, 8, 8]  # number of concurrent workers for the coffea and standalone processor
+workers: [5, 5, 5, 5]  # number of concurrent workers for the coffea and standalone processor
 run_step: 1111  # four bool digits to control whether or not to run each of the four steps
 skip_coffea: false  # if true, skip running the coffea step and directly load the existing results (should guarantee that the coffea step has run before)
 use_helvetica: auto  # use the Helvetica font in mplhep, works when Helvetica exists in your local system. Support true, false, auto

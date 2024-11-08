@@ -24,10 +24,6 @@ pt_edges: [450, 500, 600]
 custom_sfbdt_path: /eos/user/c/coli/cms-repo/boohft-calib/sfbdt_models/20221106/tau31_10_10_fj1_model/std/xgb_train.model
 custom_sfbdt_kfold: 5
 
-## [Optional]: Step 4 will by default run the impact for the central fit point, which is time-consuming.
-## For this example we temporarily disable the feature, which does not affect the scale factors. 
-run_impact_for_central_fit: false  # default: true
-
 #######################
 ## Tagger defination ##
 #######################

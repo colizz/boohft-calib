@@ -60,6 +60,12 @@ See detailed explanation in the example card [`cards/example_bb_PNetXbbVsQCD.yml
 --------
 ## Update notes
 
+v3.1.3 November 8, 2024
+ - Feature: allow setting an individual fit range for the main POI
+ - Feature: allow customisation of sfBDT input variables
+ - Update: adapt code compatibility to the EL9 system.
+ - Update: reduce the default numbers of parallel workers from 8 to 5 to prevent warnings on lxplus.
+
 v3.1.2 July 21, 2023
  - Update: fix lumi uncertainty
  - Update: apply no JERC correction to SV mass

@@ -105,7 +105,7 @@ class FitUnit(ProcessingUnit):
 
         # 1. Setup CMSSW environment
         _logger.info("[Postprocess]: Set up the CMSSW environment...")
-        out, ret = runcmd("bash cmssw/env_setup.sh")
+        out, ret = runcmd("bash cmssw/wrapper.sh cmssw/env_setup.sh")
         if ret != 0:
             _logger.exception("Error running cmssw setup:\n\n" + out)
             raise
@@ -635,7 +635,7 @@ def concurrent_fit_unit(arg):
             assert isinstance(args.set_bounds_main_poi, list) and len(args.set_bounds_main_poi) == 2
             lower, upper = args.set_bounds_main_poi
             ext_args += f'--bound-main-poi={lower},{upper} '
-        out, ret = runcmd(f"bash cmssw/launch_fit.sh {inputdir} {workdir} --year={args.year} --type={args.type} --mode={mode} {ext_args}")
+        out, ret = runcmd(f"bash cmssw/wrapper.sh cmssw/launch_fit.sh {inputdir} {workdir} --year={args.year} --type={args.type} --mode={mode} {ext_args}")
         if ret != 0:
             _logger.error("Error running the fit point: " + workdir + "\n" + \
                 "See the following output (from last few lines):\n\n" + '\n'.join(out.splitlines()[-20:]))
