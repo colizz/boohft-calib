@@ -74,6 +74,15 @@ rwgt_pt_bins: [[200, 250], [250, 300], [300, 350], [350, 400], [400, 450], [450,
 # uncertainty list to run
 unce_list: [pu, l1PreFiring, jes, jer, fracBB, fracCC, fracLight, psWeightIsr, psWeightFsr, sfBDTRwgt, fitVarRwgt]
 
+# sfBDT input variable expressions ('fj_x' is a placeholder of 'fj_1' and 'fj_2')
+sfbdt_input_exprs:
+  - fj_x_tau21
+  - fj_x_sj1_rawmass
+  - fj_x_sj2_rawmass
+  - fj_x_ntracks_sv12
+  - fj_x_sj1_sv1_pt
+  - fj_x_sj2_sv1_pt
+
 # mapping the tagger name in NanoAOD and NanoHRT tuples
 tagger_name_replace_map:
   # ParticleNet MD/non-MD

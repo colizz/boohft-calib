@@ -62,7 +62,7 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
         if self.global_cfg.custom_sfbdt_path is not None:
             self.xgb = XGBEnsemble(
                 [self.global_cfg.custom_sfbdt_path + '.%d' % i for i in range(self.global_cfg.custom_sfbdt_kfold)],
-                ['fj_2_tau21', 'fj_2_sj1_rawmass', 'fj_2_sj2_rawmass', 'fj_2_ntracks_sv12', 'fj_2_sj1_sv1_pt', 'fj_2_sj2_sv1_pt'],
+                self.global_cfg.sfbdt_input_exprs,
             )
 
         dataset = hist.Cat("dataset", "dataset")
@@ -72,7 +72,8 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
         logmsv_bin = hist.Bin('logmsv', 'logmsv', logmsv_bin_edges)
         self.incl_var_dict = { # key: (label, bin args)
             'sfbdt': ('sfBDT', (50, 0., 1.)),
-            'xtagger': ('Transformed tagger', (50, 0., 1.)),
+            'tagger': ('Tagger discr.', (50, *self.global_cfg.tagger.span)),
+            'xtagger': ('Transformed tagger discr.', (50, 0., 1.)),
             'logmsv': (r'$log(m_{SV1,d_{xy}sig\,max}\; /GeV)$', (logmsv_bin_edges,)),
             'eta': (r'$\eta(j)$', (50, -2., 2.)),
             'pt': (r'$p_{T}(j)$', (40, 200., 1000.)),
@@ -130,14 +131,7 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
             logmsv = np.log(np.maximum(msv, 1e-20))
             pt = events_fj[f'fj_{i}_pt']
             if self.global_cfg.custom_sfbdt_path is not None:
-                sfbdt_inputs = {
-                    'fj_2_tau21': events_fj[f'fj_{i}_tau21'],
-                    'fj_2_sj1_rawmass': events_fj[f'fj_{i}_sj1_rawmass'],
-                    'fj_2_sj2_rawmass': events_fj[f'fj_{i}_sj2_rawmass'],
-                    'fj_2_ntracks_sv12': events_fj[f'fj_{i}_ntracks_sv12'],
-                    'fj_2_sj1_sv1_pt': events_fj[f'fj_{i}_sj1_sv1_pt'],
-                    'fj_2_sj2_sv1_pt': events_fj[f'fj_{i}_sj2_sv1_pt'],
-                }
+                sfbdt_inputs = {v: ak.numexpr.evaluate(v.replace('fj_x', f'fj_{i}'), events_fj) for v in self.global_cfg.sfbdt_input_exprs}
                 sfbdt = ak.Array(self.xgb.eval(sfbdt_inputs))
             else:
                 sfbdt = events_fj[f'fj_{i}_sfBDT']
@@ -217,14 +211,11 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
                             if untype not in sfbdt_corr_cache.keys():
                                 assert self.global_cfg.custom_sfbdt_path is not None, \
                                     "To derive JES/JER templates, a customized sfBDT path must be specified because sfBDT will be recalculated from JES/JER corrected input"
-                                sfbdt_inputs = {
-                                    'fj_2_tau21': events_fj[f'fj_{i}_tau21'],
-                                    'fj_2_sj1_rawmass': events_fj[f'fj_{i}_sj1_rawmass'] * events_fj[f'fj_{i}{suffix_to_branch[untype]}'],
-                                    'fj_2_sj2_rawmass': events_fj[f'fj_{i}_sj2_rawmass'] * events_fj[f'fj_{i}{suffix_to_branch[untype]}'],
-                                    'fj_2_ntracks_sv12': events_fj[f'fj_{i}_ntracks_sv12'],
-                                    'fj_2_sj1_sv1_pt': events_fj[f'fj_{i}_sj1_sv1_pt'] * events_fj[f'fj_{i}{suffix_to_branch[untype]}'],
-                                    'fj_2_sj2_sv1_pt': events_fj[f'fj_{i}_sj2_sv1_pt'] * events_fj[f'fj_{i}{suffix_to_branch[untype]}'],
-                                }
+                                sfbdt_inputs = {}
+                                for v in self.global_cfg.sfbdt_input_exprs:
+                                    sfbdt_inputs[v] = ak.numexpr.evaluate(v.replace('fj_x', f'fj_{i}'), events_fj)
+                                    if any(v in expr for expr in ['fj_x_sj1_rawmass', 'fj_x_sj2_rawmass', 'fj_x_sj1_sv1_pt', 'fj_x_sj2_sv1_pt']):
+                                        sfbdt_inputs[v] = sfbdt_inputs[v] * events_fj[f'fj_{i}{suffix_to_branch[untype]}']
                                 sfbdt_corr_cache[untype] = ak.Array(self.xgb.eval(sfbdt_inputs))
                             coastline_ptsel_corr = ak.from_numpy(self.coastline_map[ipt]['fspline'](ak.to_numpy(xtagger[ptsel_corr]), ak.to_numpy(sfbdt_corr_cache[untype][ptsel_corr])))
                             out[f'h_pt{ptmin}to{ptmax}_{wp}_{untype}'].fill(
@@ -238,7 +229,7 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
 
                 # fill in inclusive histogram
                 for var, expr in zip(self.incl_var_dict.keys(), [
-                    'sfbdt[ptsel]', 'xtagger[ptsel]', 'logmsv[ptsel]', \
+                    'sfbdt[ptsel]', 'tagger[ptsel]', 'xtagger[ptsel]', 'logmsv[ptsel]', \
                     f'events_fj.fj_{i}_eta[ptsel]', f'events_fj.fj_{i}_pt[ptsel]', f'events_fj.fj_{i}_sdmass[ptsel]',
                 ]):
                     out[f'hinc_{var}_pt{ptmin}to{ptmax}'].fill(

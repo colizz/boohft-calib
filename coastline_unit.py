@@ -49,7 +49,7 @@ class CoastlineCoffeaProcessor(processor.ProcessorABC):
         if self.global_cfg.custom_sfbdt_path is not None:
             self.xgb = XGBEnsemble(
                 [self.global_cfg.custom_sfbdt_path + '.%d' % i for i in range(self.global_cfg.custom_sfbdt_kfold)],
-                ['fj_2_tau21', 'fj_2_sj1_rawmass', 'fj_2_sj2_rawmass', 'fj_2_ntracks_sv12', 'fj_2_sj1_sv1_pt', 'fj_2_sj2_sv1_pt'],
+                self.global_cfg.sfbdt_input_exprs,
             )
 
         dataset = hist.Cat("dataset", "dataset")
@@ -105,14 +105,7 @@ class CoastlineCoffeaProcessor(processor.ProcessorABC):
 
             # fill into histograms for each WP (range choices on tagger), MC only, flavour selection applied
             if self.global_cfg.custom_sfbdt_path is not None:
-                sfbdt_inputs = {
-                    'fj_2_tau21': events_fj[f'fj_{i}_tau21'],
-                    'fj_2_sj1_rawmass': events_fj[f'fj_{i}_sj1_rawmass'],
-                    'fj_2_sj2_rawmass': events_fj[f'fj_{i}_sj2_rawmass'],
-                    'fj_2_ntracks_sv12': events_fj[f'fj_{i}_ntracks_sv12'],
-                    'fj_2_sj1_sv1_pt': events_fj[f'fj_{i}_sj1_sv1_pt'],
-                    'fj_2_sj2_sv1_pt': events_fj[f'fj_{i}_sj2_sv1_pt'],
-                }
+                sfbdt_inputs = {v: ak.numexpr.evaluate(v.replace('fj_x', f'fj_{i}'), events_fj) for v in self.global_cfg.sfbdt_input_exprs}
                 sfbdt = ak.Array(self.xgb.eval(sfbdt_inputs))
             else:
                 sfbdt = events_fj[f'fj_{i}_sfBDT']
