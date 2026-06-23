@@ -3,11 +3,11 @@ For step 3: derive the template for fit.
 
 """
 
-from coffea import processor, hist
+from coffea import processor
 import awkward as ak
+import hist
 import numpy as np
 import uproot
-import uproot3
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -27,11 +27,11 @@ import pickle
 import json
 import os
 
-from unit import ProcessingUnit, StandaloneMultiThreadedUnit
+from routines.base import ProcessingUnit, StandaloneMultiThreadedUnit
 from utils.web_maker import WebMaker
-from utils.tools import lookup_pt_based_weight, parse_tagger_expr
+from utils.tools import lookup_pt_based_weight, parse_tagger_expr, eval_expr, expression_names
 from utils.plotting import make_generic_mc_data_plots
-from utils.bh_tools import bh_to_uproot3, fix_bh, scale_bh
+from utils.bh_tools import bh_to_uproot, fix_bh, scale_bh
 from utils.xgb_tools import XGBEnsemble
 from logger import _logger
 
@@ -50,6 +50,29 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
         self.wps = global_cfg.tagger.wps # wps in the dict format
 
         self.tagger_expr = parse_tagger_expr(global_cfg.tagger_name_replace_map, global_cfg.tagger.expr)
+        self.required_branches = set(global_cfg.hlt_branches[global_cfg.year]) | {
+            'passmetfilters', 'ht',
+            'fj_1_is_qualified', 'fj_2_is_qualified',
+            'fj_1_pt', 'fj_2_pt', 'fj_1_eta', 'fj_2_eta', 'fj_1_sdmass', 'fj_2_sdmass',
+            'genWeight', 'xsecWeight', 'puWeight', 'puWeightUp', 'puWeightDown',
+            'l1PreFiringWeight', 'l1PreFiringWeightUp', 'l1PreFiringWeightDown',
+            'PSWeight',
+            'fj_1_nbhadrons', 'fj_1_nchadrons', 'fj_2_nbhadrons', 'fj_2_nchadrons',
+            'fj_1_sfBDT', 'fj_2_sfBDT',
+            'fj_1_sj1_sv1_dxysig', 'fj_1_sj2_sv1_dxysig',
+            'fj_1_sj1_sv1_masscor', 'fj_1_sj2_sv1_masscor',
+            'fj_2_sj1_sv1_dxysig', 'fj_2_sj2_sv1_dxysig',
+            'fj_2_sj1_sv1_masscor', 'fj_2_sj2_sv1_masscor',
+            'fj_1_jesUncFactorUp', 'fj_1_jesUncFactorDn', 'fj_1_jerSmearFactorUp', 'fj_1_jerSmearFactorDn',
+            'fj_2_jesUncFactorUp', 'fj_2_jesUncFactorDn', 'fj_2_jerSmearFactorUp', 'fj_2_jerSmearFactorDn',
+            'ht_jesUncFactorUp', 'ht_jesUncFactorDn', 'ht_jerSmearFactorUp', 'ht_jerSmearFactorDn',
+        }
+        for jet in ('fj_1', 'fj_2'):
+            self.required_branches.update(expression_names(self.tagger_expr.replace('fj_x', jet)))
+            if global_cfg.custom_selection is not None:
+                self.required_branches.update(expression_names(global_cfg.custom_selection.replace('fj_x', jet)))
+            for expr in global_cfg.sfbdt_input_exprs:
+                self.required_branches.update(expression_names(expr.replace('fj_x', jet)))
         self.lookup_mc_weight = partial(lookup_pt_based_weight, self.weight_map, self.pt_reweight_edges, jet_var_maxlimit=2500.)
         self.lookup_sfbdt_weight = partial(lookup_pt_based_weight, self.sfbdt_weight_map, self.pt_reweight_edges, jet_var_maxlimit=1.)
         self.untypes = ['nominal', 'fracBCLUp', 'fracBCLDown', 'puUp', 'puDown', 'l1PreFiringUp', 'l1PreFiringDown', 'jesUp', 'jesDown', 'jerUp', 'jerDown', 'psWeightIsrUp', 'psWeightIsrDown', 'psWeightFsrUp', 'psWeightFsrDown', 'sfBDTRwgtUp']
@@ -65,15 +88,15 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
                 self.global_cfg.sfbdt_input_exprs,
             )
 
-        dataset = hist.Cat("dataset", "dataset")
-        flv_bin = hist.Bin('flv', 'flv', [-.5, .5, 1.5, 2.5]) # three bins for flvL=0, flvB=1, flvC=2
-        passwp_bin = hist.Bin('passwp', 'passwp', [-.5, .5, 1.5]) # two bins for fail=0, pass=1
         logmsv_bin_edges = [-0.8, -0.4, 0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1., 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 2.5, 3.2]
-        logmsv_bin = hist.Bin('logmsv', 'logmsv', logmsv_bin_edges)
+        dataset_axis = hist.axis.StrCategory(list(global_cfg.fileset_template.keys()), name='dataset')
+        flv_axis = hist.axis.Variable([-.5, .5, 1.5, 2.5], name='flv')
+        passwp_axis = hist.axis.Variable([-.5, .5, 1.5], name='passwp')
+        logmsv_axis = hist.axis.Variable(logmsv_bin_edges, name='logmsv')
         self.incl_var_dict = { # key: (label, bin args)
             'sfbdt': ('sfBDT', (50, 0., 1.)),
             'tagger': ('Tagger discr.', (50, *self.global_cfg.tagger.span)),
-            'xtagger': ('Transformed tagger discr.', (50, 0., 1.)),
+            'xtagger': ('Transformed tagger', (50, 0., 1.)),
             'logmsv': (r'$log(m_{SV1,d_{xy}sig\,max}\; /GeV)$', (logmsv_bin_edges,)),
             'eta': (r'$\eta(j)$', (50, -2., 2.)),
             'pt': (r'$p_{T}(j)$', (40, 200., 1000.)),
@@ -82,39 +105,81 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
 
         hist_fit, hist_incl = {}, {}
         for ipt, (ptmin, ptmax) in enumerate(zip(self.pt_edges[:-1], self.pt_edges[1:])):
-            coastline_bin = hist.Bin('coastline', 'coastline', coastline_map[ipt]['levels'])
+            coastline_edges = coastline_map[ipt]['levels']
+            coastline_axis = hist.axis.Variable(coastline_edges, name='coastline')
             for wp in self.wps:
                 for untype in self.untypes:
                     # these unce types should derive individual hist templates
                     hist_fit.update({
-                        f'h_pt{ptmin}to{ptmax}_{wp}_{untype}': hist.Hist('Counts', dataset, flv_bin, passwp_bin, coastline_bin, logmsv_bin),
+                        f'h_pt{ptmin}to{ptmax}_{wp}_{untype}': hist.Hist(
+                            dataset_axis, flv_axis, passwp_axis, coastline_axis, logmsv_axis,
+                            storage=hist.storage.Weight(),
+                        ),
                     })
             # inclusive histogram (pass+fail)
             for var in self.incl_var_dict:
                 _, bin_args = self.incl_var_dict[var]
+                if len(bin_args) == 1:
+                    var_axis = hist.axis.Variable(bin_args[0], name='var')
+                else:
+                    var_axis = hist.axis.Regular(*bin_args, name='var')
                 hist_incl.update({
-                    f'hinc_{var}_pt{ptmin}to{ptmax}': hist.Hist('Counts', dataset, flv_bin, coastline_bin, hist.Bin('var', 'var', *bin_args)),
+                    f'hinc_{var}_pt{ptmin}to{ptmax}': hist.Hist(
+                        dataset_axis, flv_axis, coastline_axis, var_axis,
+                        storage=hist.storage.Weight(),
+                    ),
                 })
 
-        self._accumulator = processor.dict_accumulator({
+        self._accumulator = {
             **hist_fit, **hist_incl,
-        })
+        }
 
     @property
     def accumulator(self):
         return self._accumulator
 
 
+    def _as_numpy(self, array):
+        return np.asarray(ak.to_numpy(array))
+
+
+    def _fill_template(self, hist_, dataset, flv, passwp, coastline, logmsv, weight):
+        logmsv = self._as_numpy(logmsv)
+        if len(logmsv) == 0:
+            return
+        hist_.fill(
+            dataset=np.full(len(logmsv), dataset),
+            flv=self._as_numpy(flv),
+            passwp=self._as_numpy(passwp).astype(int),
+            coastline=self._as_numpy(coastline),
+            logmsv=logmsv,
+            weight=self._as_numpy(weight),
+        )
+
+
+    def _fill_inclusive(self, hist_, dataset, flv, coastline, var, weight):
+        var = self._as_numpy(var)
+        if len(var) == 0:
+            return
+        hist_.fill(
+            dataset=np.full(len(var), dataset),
+            flv=self._as_numpy(flv),
+            coastline=self._as_numpy(coastline),
+            var=var,
+            weight=self._as_numpy(weight),
+        )
+
+
     def process(self, events):
-        out = self.accumulator.identity()
+        out = {key: value.copy() * 0 for key, value in self.accumulator.items()}
         dataset = events.metadata['dataset']
         is_mc = dataset != 'jetht'
 
-        presel = ak.numexpr.evaluate('passmetfilters & (' + '|'.join(self.global_cfg.hlt_branches[self.global_cfg.year]) + ')', events)
+        presel = eval_expr('passmetfilters & (' + '|'.join(self.global_cfg.hlt_branches[self.global_cfg.year]) + ')', events)
         lumi = self.global_cfg.lumi_dict[self.global_cfg.year]
 
         for i in '12': # jet index
-            custom_sel = ak.numexpr.evaluate(self.global_cfg.custom_selection.replace('fj_x', f'fj_{i}'), events) if self.global_cfg.custom_selection is not None else ak.ones_like(presel, dtype=bool)
+            custom_sel = eval_expr(self.global_cfg.custom_selection.replace('fj_x', f'fj_{i}'), events) if self.global_cfg.custom_selection is not None else ak.ones_like(presel, dtype=bool)
             events_fj = events[(presel) & (events[f'fj_{i}_is_qualified']) & (custom_sel)]
 
             # calculate bin variables
@@ -124,19 +189,19 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
             else:
                 isB = isC = ak.zeros_like(events_fj.ht)
 
-            msv = ak.numexpr.evaluate(
+            msv = eval_expr(
                 f'(fj_{i}_sj1_sv1_dxysig>fj_{i}_sj2_sv1_dxysig)*fj_{i}_sj1_sv1_masscor + (fj_{i}_sj1_sv1_dxysig<=fj_{i}_sj2_sv1_dxysig)*fj_{i}_sj2_sv1_masscor',
                 events_fj
             )
             logmsv = np.log(np.maximum(msv, 1e-20))
             pt = events_fj[f'fj_{i}_pt']
             if self.global_cfg.custom_sfbdt_path is not None:
-                sfbdt_inputs = {v: ak.numexpr.evaluate(v.replace('fj_x', f'fj_{i}'), events_fj) for v in self.global_cfg.sfbdt_input_exprs}
+                sfbdt_inputs = {v: eval_expr(v.replace('fj_x', f'fj_{i}'), events_fj) for v in self.global_cfg.sfbdt_input_exprs}
                 sfbdt = ak.Array(self.xgb.eval(sfbdt_inputs))
             else:
                 sfbdt = events_fj[f'fj_{i}_sfBDT']
             sfbdt_corr_cache = {} # prepared for JES/JER corrected version of sfBDT
-            tagger = ak.numexpr.evaluate(self.tagger_expr.replace('fj_x', f'fj_{i}'), events_fj)
+            tagger = eval_expr(self.tagger_expr.replace('fj_x', f'fj_{i}'), events_fj)
             tagger = np.clip(tagger, *self.global_cfg.tagger.span)
             xtagger = self.xtagger_map(tagger)
 
@@ -145,22 +210,22 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
             if is_mc:
                 mc_weight = self.lookup_mc_weight(f'fj{i}', pt, events_fj['ht'])
                 sfbdt_weight = self.lookup_sfbdt_weight(f'fj{i}', pt, sfbdt)
-                weight_base = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeight*l1PreFiringWeight*{lumi}', events_fj)
+                weight_base = eval_expr(f'genWeight*xsecWeight*puWeight*l1PreFiringWeight*{lumi}', events_fj)
                 weight['nominal'] = weight_base * mc_weight
-                weight['fracBCLUp'] = weight['nominal'] * ak.numexpr.evaluate(
+                weight['fracBCLUp'] = weight['nominal'] * eval_expr(
                     f'(fj_{i}_nbhadrons>=1) * (1.2*(fj_{i}_nbhadrons>1) + 1.2*(fj_{i}_nbhadrons<=1)) + ' + \
                     f'((fj_{i}_nbhadrons==0) & (fj_{i}_nchadrons>=1)) * (1.2*(fj_{i}_nchadrons>1) + 1.2*(fj_{i}_nchadrons<=1)) + ' + \
                     f'((fj_{i}_nbhadrons==0) & (fj_{i}_nchadrons==0)) * (1.2)', events_fj
                 )
-                weight['fracBCLDown'] = weight['nominal'] * ak.numexpr.evaluate(
+                weight['fracBCLDown'] = weight['nominal'] * eval_expr(
                     f'(fj_{i}_nbhadrons>=1) * (0.8*(fj_{i}_nbhadrons>1) + 0.8*(fj_{i}_nbhadrons<=1)) + ' + \
                     f'((fj_{i}_nbhadrons==0) & (fj_{i}_nchadrons>=1)) * (0.8*(fj_{i}_nchadrons>1) + 0.8*(fj_{i}_nchadrons<=1)) + ' + \
                     f'((fj_{i}_nbhadrons==0) & (fj_{i}_nchadrons==0)) * (0.8)', events_fj
                 )
-                weight['puUp'] = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeightUp*l1PreFiringWeight*{lumi}', events_fj) * mc_weight
-                weight['puDown'] = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeightDown*l1PreFiringWeight*{lumi}', events_fj) * mc_weight
-                weight['l1PreFiringUp'] = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeight*l1PreFiringWeightUp*{lumi}', events_fj) * mc_weight
-                weight['l1PreFiringDown'] = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeight*l1PreFiringWeightDown*{lumi}', events_fj) * mc_weight
+                weight['puUp'] = eval_expr(f'genWeight*xsecWeight*puWeightUp*l1PreFiringWeight*{lumi}', events_fj) * mc_weight
+                weight['puDown'] = eval_expr(f'genWeight*xsecWeight*puWeightDown*l1PreFiringWeight*{lumi}', events_fj) * mc_weight
+                weight['l1PreFiringUp'] = eval_expr(f'genWeight*xsecWeight*puWeight*l1PreFiringWeightUp*{lumi}', events_fj) * mc_weight
+                weight['l1PreFiringDown'] = eval_expr(f'genWeight*xsecWeight*puWeight*l1PreFiringWeightDown*{lumi}', events_fj) * mc_weight
                 if len(events_fj) and hasattr(events_fj, 'PSWeight') and len(events_fj.PSWeight[0]) == 4:
                     # apply PSWeight only at the final stage, while still using the nominal MC reweighting map
                     weight['psWeightIsrUp'] = weight['nominal'] * events_fj.PSWeight[:,2]
@@ -192,13 +257,14 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
                         # a histogram standards for a given pT range (coastline depends on this), for each WP, and for an unce type
                         if (not is_mc) or (is_mc and untype not in ['jesUp', 'jesDown', 'jerUp', 'jerDown']):
                             # histogram differs only by a specific event weight
-                            out[f'h_pt{ptmin}to{ptmax}_{wp}_{untype}'].fill(
-                                dataset=dataset,
-                                flv=isB[ptsel] * 1 + isC[ptsel] * 2,
-                                passwp=passwp[wp][ptsel],
-                                coastline=coastline_ptsel,
-                                logmsv=logmsv[ptsel],
-                                weight=weight[untype][ptsel]
+                            self._fill_template(
+                                out[f'h_pt{ptmin}to{ptmax}_{wp}_{untype}'],
+                                dataset,
+                                isB[ptsel] * 1 + isC[ptsel] * 2,
+                                passwp[wp][ptsel],
+                                coastline_ptsel,
+                                logmsv[ptsel],
+                                weight[untype][ptsel],
                             )
                         else:
                             # special handling for JES/JER: jet pt need to be corrected
@@ -213,18 +279,19 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
                                     "To derive JES/JER templates, a customized sfBDT path must be specified because sfBDT will be recalculated from JES/JER corrected input"
                                 sfbdt_inputs = {}
                                 for v in self.global_cfg.sfbdt_input_exprs:
-                                    sfbdt_inputs[v] = ak.numexpr.evaluate(v.replace('fj_x', f'fj_{i}'), events_fj)
+                                    sfbdt_inputs[v] = eval_expr(v.replace('fj_x', f'fj_{i}'), events_fj)
                                     if any(v in expr for expr in ['fj_x_sj1_rawmass', 'fj_x_sj2_rawmass', 'fj_x_sj1_sv1_pt', 'fj_x_sj2_sv1_pt']):
                                         sfbdt_inputs[v] = sfbdt_inputs[v] * events_fj[f'fj_{i}{suffix_to_branch[untype]}']
                                 sfbdt_corr_cache[untype] = ak.Array(self.xgb.eval(sfbdt_inputs))
                             coastline_ptsel_corr = ak.from_numpy(self.coastline_map[ipt]['fspline'](ak.to_numpy(xtagger[ptsel_corr]), ak.to_numpy(sfbdt_corr_cache[untype][ptsel_corr])))
-                            out[f'h_pt{ptmin}to{ptmax}_{wp}_{untype}'].fill(
-                                dataset=dataset,
-                                flv=isB[ptsel_corr] * 1 + isC[ptsel_corr] * 2,
-                                passwp=passwp[wp][ptsel_corr],
-                                coastline=coastline_ptsel_corr,
-                                logmsv=logmsv[ptsel_corr],
-                                weight=weight_corr[ptsel_corr]
+                            self._fill_template(
+                                out[f'h_pt{ptmin}to{ptmax}_{wp}_{untype}'],
+                                dataset,
+                                isB[ptsel_corr] * 1 + isC[ptsel_corr] * 2,
+                                passwp[wp][ptsel_corr],
+                                coastline_ptsel_corr,
+                                logmsv[ptsel_corr],
+                                weight_corr[ptsel_corr],
                             )
 
                 # fill in inclusive histogram
@@ -232,12 +299,13 @@ class TmplWriterCoffeaProcessor(processor.ProcessorABC):
                     'sfbdt[ptsel]', 'tagger[ptsel]', 'xtagger[ptsel]', 'logmsv[ptsel]', \
                     f'events_fj.fj_{i}_eta[ptsel]', f'events_fj.fj_{i}_pt[ptsel]', f'events_fj.fj_{i}_sdmass[ptsel]',
                 ]):
-                    out[f'hinc_{var}_pt{ptmin}to{ptmax}'].fill(
-                        dataset=dataset,
-                        flv=isB[ptsel] * 1 + isC[ptsel] * 2,
-                        coastline=coastline_ptsel,
-                        var=eval(expr),
-                        weight=weight['nominal'][ptsel]
+                    self._fill_inclusive(
+                        out[f'hinc_{var}_pt{ptmin}to{ptmax}'],
+                        dataset,
+                        isB[ptsel] * 1 + isC[ptsel] * 2,
+                        coastline_ptsel,
+                        eval(expr),
+                        weight['nominal'][ptsel],
                     )
 
         return out
@@ -321,7 +389,7 @@ class TmplWriterUnit(ProcessingUnit):
                 for ipt, (ptmin, ptmax) in enumerate(zip(p.pt_edges[:-1], p.pt_edges[1:])): # pt loop
                     # now all histogram infos are stored in the high-dim coffea hist
                     # we will use that to write all corresponding templates
-                    bhs = {key: self.result[key].to_boost() for key in self.result if key.startswith(f'h_pt{ptmin}to{ptmax}_{wp}')} # used hists for one tasks
+                    bhs = {key: self.result[key] for key in self.result if key.startswith(f'h_pt{ptmin}to{ptmax}_{wp}')} # used hists for one tasks
                     nbdt = len(self.coastline_map[ipt]['levels'])
                     writer_handler.book((args, bhs, wp, (ptmin, ptmax), nbdt))
 
@@ -371,10 +439,9 @@ class TmplWriterUnit(ProcessingUnit):
                     args = SimpleNamespace(
                         color_mc=color_mc, year=year, lumi=lumi,
                         flvbin=flvbin, iflvbin_order=iflvbin_order,
-                        use_helvetica=self.global_cfg.use_helvetica,
                         logmsv_div_by_binw=self.global_cfg.logmsv_div_by_binw,
                     )
-                    h = self.result[f'hinc_{var}_pt{ptmin}to{ptmax}'].to_boost()
+                    h = self.result[f'hinc_{var}_pt{ptmin}to{ptmax}']
                     nbdt = len(self.coastline_map[ipt]['levels'])
                     plot_args = {'ylog': True} if var == 'xtagger' else {}
                     plotter_handler.book((args, self.webdir, h, (var, xlabel), (ptmin, ptmax), nbdt, plot_args))
@@ -416,7 +483,15 @@ def concurrent_tmpl_writing_unit(arg):
         for ipasswp, passwp in zip(range(2), ['fail', 'pass']): # store into input_fail.root or input_pass.root
             filepath = os.path.join(fitpath, f'inputs_{passwp}.root') # file to create
 
-            with uproot3.recreate(filepath) as fw:
+            if ibdt != jbdt:
+                src_bdt = jbdt if passwp == 'fail' else ibdt
+                shutil.copyfile(
+                    os.path.join(args.outputdir, 'cards', wp, f'pt{ptmin}to{ptmax}', f'bdt{src_bdt}{src_bdt}', f'inputs_{passwp}.root'),
+                    filepath,
+                )
+                continue
+
+            with uproot.recreate(filepath) as fw:
                 for w_untype in args.write_untypes: # uncertainty type
 
                     # if not w_untype.startswith('sfBDTRwgt'):
@@ -432,37 +507,24 @@ def concurrent_tmpl_writing_unit(arg):
                     # We do no normalize the inclusive (pass+fail) templates before fit!
                     tot_fac = 1.
                     
-                    if ibdt == jbdt:
-                        for iflv, flv in zip(range(3), ['flvL', 'flvB', 'flvC']): # multiple hists in a root file
-                            cat = flv if w_untype == 'nominal' else (flv + '_' + w_untype)
+                    for iflv, flv in zip(range(3), ['flvL', 'flvB', 'flvC']): # multiple hists in a root file
+                        cat = flv if w_untype == 'nominal' else (flv + '_' + w_untype)
 
-                            # now, access the target hist by: h[bh.loc(some cat), iflv, ipasswp, bdt_indices[ibdt], :] 
-                            # get MC templates: pass in the additional options which can be used for some unce type if needed
-                            is_mc = True
-                            h_fit = get_unit_template(bhs, wp, (ptmin, ptmax), ibdt, w_untype, ipasswp, iflv, is_mc=is_mc, is_incl=False,
-                                                additional_options={'factor': tot_fac, 'hists': hs_stored})
-                            h_fit = fix_bh(h_fit)
-                            hs_stored[(wp, (ptmin, ptmax), ibdt, w_untype, ipasswp, iflv, is_mc)] = h_fit
-                            fw[cat] = bh_to_uproot3(h_fit)
-                            # store data_obs for nominal hist
-                        if w_untype == 'nominal':
-                            is_mc = False
-                            h_fit_data = get_unit_template(bhs, wp, (ptmin, ptmax), ibdt, w_untype, ipasswp, iflv, is_mc=is_mc, is_incl=False)
-                            h_fit_data = fix_bh(h_fit_data)
-                            hs_stored[(wp, (ptmin, ptmax), ibdt, w_untype, ipasswp, iflv, is_mc)] = h_fit_data
-                            fw['data_obs'] = bh_to_uproot3(h_fit_data)
-                    else: # ibdt != jbdt
-                        # copy the existing root file
-                        if passwp == 'fail':
-                            shutil.copy(
-                                os.path.join(args.outputdir, 'cards', wp, f'pt{ptmin}to{ptmax}', f'bdt{jbdt}{jbdt}', f'inputs_{passwp}.root'),
-                                filepath
-                            )
-                        elif passwp == 'pass':
-                            shutil.copy(
-                                os.path.join(args.outputdir, 'cards', wp, f'pt{ptmin}to{ptmax}', f'bdt{ibdt}{ibdt}', f'inputs_{passwp}.root'),
-                                filepath
-                            )
+                        # now, access the target hist by: h[bh.loc(some cat), iflv, ipasswp, bdt_indices[ibdt], :]
+                        # get MC templates: pass in the additional options which can be used for some unce type if needed
+                        is_mc = True
+                        h_fit = get_unit_template(bhs, wp, (ptmin, ptmax), ibdt, w_untype, ipasswp, iflv, is_mc=is_mc, is_incl=False,
+                                            additional_options={'factor': tot_fac, 'hists': hs_stored})
+                        h_fit = fix_bh(h_fit)
+                        hs_stored[(wp, (ptmin, ptmax), ibdt, w_untype, ipasswp, iflv, is_mc)] = h_fit
+                        fw[cat] = bh_to_uproot(h_fit)
+                        # store data_obs for nominal hist
+                    if w_untype == 'nominal':
+                        is_mc = False
+                        h_fit_data = get_unit_template(bhs, wp, (ptmin, ptmax), ibdt, w_untype, ipasswp, iflv, is_mc=is_mc, is_incl=False)
+                        h_fit_data = fix_bh(h_fit_data)
+                        hs_stored[(wp, (ptmin, ptmax), ibdt, w_untype, ipasswp, iflv, is_mc)] = h_fit_data
+                        fw['data_obs'] = bh_to_uproot(h_fit_data)
     # when all finish, return the stored boost histograms for bookkeeping
     return (hs_stored, fitpath_stored)
 
@@ -471,23 +533,37 @@ def concurrent_inclusive_plot_writing_unit(arg):
     r"""Unit concurrent task to make inclusive plots based on the coffea result histogram.
     """
     args, webdir, h, (var, xlabel), (ptmin, ptmax), nbdt, plot_args = arg
-    bdt_indices = [bh.underflow] + list(range(nbdt - 1)) + [bh.overflow]
+    bdt_indices = [hist.underflow] + list(range(nbdt - 1)) + [hist.overflow]
     edges = h.axes[-1].edges
+    datasets = list(h.axes[0])
+    mc_datasets = [dataset for dataset in datasets if dataset != 'jetht']
     mpl.use('Agg') # standalone job should individually specify the mpl mode...
     for ibdt in range(nbdt + 1): # different tightness of coastline selection
-        h_data = bh.sum([ # sum over ibdt
-            h[bh.loc('jetht'), :, bdt_indices[iibdt], :] for iibdt in range(ibdt + 1)
-        ])
-        h_mc = bh.sum([ # sum over ibdt
-            bh.sum([ # sum over category
-                h[bh.loc(h.axes[0].value(i)), :, bdt_indices[iibdt], :] \
-                    for i in range(h.axes[0].size) if h.axes[0].value(i) != 'jetht'
-            ]) for iibdt in range(ibdt + 1)
-        ])
-        values_mc_list = [h_mc[iflv, :].values() for iflv in args.iflvbin_order]
-        values_data = h_data[bh.sum, :].values()
-        yerr_mctot = np.sqrt(h_mc[bh.sum, :].variances())
-        yerrlo_data = yerrhi_data = np.sqrt(h_data[bh.sum, :].variances())
+        coastline_sel = bdt_indices[:ibdt + 1]
+        def sum_project(datasets, flv=None):
+            pieces = []
+            for dataset in datasets:
+                for coastline_idx in coastline_sel:
+                    selectors = {'dataset': dataset, 'coastline': coastline_idx}
+                    if flv is not None:
+                        selectors['flv'] = flv
+                    pieces.append(h[selectors].project('var'))
+            if len(pieces) == 0:
+                selectors = {'dataset': list(h.axes[0])[0], 'coastline': hist.underflow}
+                if flv is not None:
+                    selectors['flv'] = flv
+                return h[selectors].project('var') * 0
+            return sum(pieces[1:], pieces[0].copy())
+
+        values_mc_list = [
+            sum_project(mc_datasets, flv=iflv).values()
+            for iflv in args.iflvbin_order
+        ]
+        h_data = sum_project(['jetht'])
+        h_mc = sum_project(mc_datasets)
+        values_data = h_data.values()
+        yerr_mctot = np.sqrt(h_mc.variances())
+        yerrlo_data = yerrhi_data = np.sqrt(h_data.variances())
         plot_text = '$p_T$: [{ptmin}, {ptmax}) GeV'.format(ptmin=ptmin, ptmax=ptmax if ptmax != 100000 else '+∞')
         plot_subtext = f'Coastline index: {ibdt+1} / {nbdt}' if ibdt != nbdt else 'Inclusive (no coastline selection)'
         store_name = os.path.join(webdir, f'incl_{var}_csl{ibdt}_{args.year}_pt{ptmin}to{ptmax}')
@@ -501,7 +577,7 @@ def concurrent_inclusive_plot_writing_unit(arg):
                 edges, values_mc_list, yerr_mctot, values_data, yerrlo_data, yerrhi_data,
                 [f'MC ({args.flvbin[iflv]})' for iflv in args.iflvbin_order], args.color_mc,
                 xlabel, 'Events / bin width × 0.1', args.year, args.lumi,
-                use_helvetica=args.use_helvetica, plot_args=plot_args,
+                plot_args=plot_args,
                 plot_text=plot_text, plot_subtext=plot_subtext,
                 store_name=store_name
             )
@@ -510,7 +586,7 @@ def concurrent_inclusive_plot_writing_unit(arg):
                 edges, values_mc_list, yerr_mctot, values_data, yerrlo_data, yerrhi_data,
                 [f'MC ({args.flvbin[iflv]})' for iflv in args.iflvbin_order], args.color_mc,
                 xlabel, 'Events / bin', args.year, args.lumi,
-                use_helvetica=args.use_helvetica, plot_args=plot_args,
+                plot_args=plot_args,
                 plot_text=plot_text, plot_subtext=plot_subtext,
                 store_name=store_name
             )
@@ -525,19 +601,26 @@ def get_unit_template(bhs, wp, pt_lim, ibdt, w_untype, ipasswp, iflv, is_mc=True
 
     def default(w_untype_=w_untype, ipasswp_=ipasswp, iflv_=iflv, is_mc_=is_mc, is_incl_=is_incl):
         # 5 regions for sfBDT coastline selection, from tight to loose. Note that the template for fit is accumulative sum on this axis
-        bdt_indices = [bh.underflow] + list(range(ibdt))
+        bdt_indices = [hist.underflow] + list(range(ibdt))
         h = bhs[f'h_pt{pt_lim[0]}to{pt_lim[1]}_{wp}_{w_untype_}']
-        if is_mc_:
-            return bh.sum([ # sum over ibdt
-                bh.sum([ # sum over category
-                    h[bh.loc(h.axes[0].value(i)), iflv_ if not is_incl_ else bh.sum, ipasswp_ if not is_incl_ else bh.sum, bdt_indices[iibdt], :] \
-                        for i in range(h.axes[0].size) if h.axes[0].value(i) != 'jetht'
-                ]) for iibdt in range(ibdt + 1)
-            ])
-        else:
-            return bh.sum([ # sum over ibdt
-                h[bh.loc('jetht'), 0 if not is_incl_ else bh.sum, ipasswp_ if not is_incl_ else bh.sum, bdt_indices[iibdt], :] for iibdt in range(ibdt + 1)
-            ])
+        datasets = list(h.axes[0])
+        dataset_selector = [dataset for dataset in datasets if dataset != 'jetht'] if is_mc_ else ['jetht']
+
+        def select_one(dataset, coastline_idx):
+            selectors = {'dataset': dataset, 'coastline': coastline_idx}
+            if not is_incl_:
+                selectors['flv'] = iflv_ if is_mc_ else 0
+                selectors['passwp'] = ipasswp_
+            return h[selectors].project('logmsv')
+
+        pieces = [
+            select_one(dataset, coastline_idx)
+            for dataset in dataset_selector
+            for coastline_idx in bdt_indices
+        ]
+        if len(pieces) == 0:
+            return select_one(datasets[0], hist.underflow) * 0
+        return sum(pieces[1:], pieces[0].copy())
 
     assert w_untype in ['nominal', 'puUp', 'puDown', 'l1PreFiringUp', 'l1PreFiringDown', 'jesUp', 'jesDown', 'jerUp', 'jerDown', \
         'fracBBUp', 'fracBBDown', 'fracCCUp', 'fracCCDown', 'fracLightUp', 'fracLightDown', \
@@ -602,6 +685,6 @@ def get_unit_template(bhs, wp, pt_lim, ibdt, w_untype, ipasswp, iflv, is_mc=True
             h_up, h_nom = hs[up_args], hs[nom_args]
             h_down = h_up.copy()
             # calculate down template. Note we only care about bin values for the up/down template, not variances anymore
-            for i in range(len(h_up.view(flow=True))):
+            for i in range(len(h_up.values(flow=True))):
                 h_down.values(flow=True)[i] = 2 * h_nom.values(flow=True)[i] - h_up.values(flow=True)[i]
             return h_down

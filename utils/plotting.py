@@ -1,5 +1,6 @@
 import numpy as np
 import uproot
+from uproot.source.file import MemmapSource
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -9,15 +10,39 @@ mpl.use('Agg')
 mpl.rcParams['axes.prop_cycle'] = cycler(color=['blue', 'red', 'green', 'violet', 'darkorange', 'black', 'cyan', 'yellow'])
 mpl.rcParams['figure.max_open_warning'] = 0
 import mplhep as hep
-plt.style.use(hep.style.CMS)
+hep.style.use("CMS")
 
 import os
 from logger import _logger
+
+
+def uproot_open(path):
+    return uproot.open(path, handler=MemmapSource)
+
 
 def set_sns_color(*args):
     sns.palplot(sns.color_palette(*args))
     sns.set_palette(*args)
 
+
+def _sanitize_mplhep_label_positions(artists):
+    for artist in artists:
+        if artist is None or not hasattr(artist, 'get_position'):
+            continue
+        x, y = artist.get_position()
+        if np.ndim(x) == 0 and np.ndim(y) == 0:
+            continue
+        x = np.asarray(x).ravel()[0]
+        y = np.asarray(y).ravel()[0]
+        artist.set_position((float(x), float(y)))
+
+
+def cms_label(ax, year, lumi):
+    artists = hep.cms.label("Preliminary", data=True, lumi=lumi, com=13, ax=ax, loc=0)
+    _sanitize_mplhep_label_positions(artists)
+    for artist in artists:
+        if artist is not None and hasattr(artist, 'get_text') and artist.get_text() == 'Preliminary':
+            artist.set_va('bottom')
 
 def plt_savefig_infinite(filename):
     import time
@@ -44,7 +69,7 @@ def make_stacked_plots(inputdir, workdir, args, plot_unce=True, save_plots=True,
     """
 
     ## Get the bin info based on workdir
-    edges = uproot.open(f'{inputdir}/inputs_pass.root:data_obs').axis().edges()
+    edges = uproot_open(f'{inputdir}/inputs_pass.root:data_obs').axis().edges()
     xmin, xmax, nbin = min(edges), max(edges), len(edges)
     plot_text = kwargs.get('plot_text', None)
     plot_subtext = kwargs.get('plot_subtext', None)
@@ -53,7 +78,7 @@ def make_stacked_plots(inputdir, workdir, args, plot_unce=True, save_plots=True,
     # _logger.debug(f'Making stacked plots: {workdir}')
     
     ## All information read from fitDiagnosticsTest.root
-    fit = uproot.open(f'{workdir}/fitDiagnosticsTest.root')
+    fit = uproot_open(f'{workdir}/fitDiagnosticsTest.root')
     for rootdir, title in zip(['shapes_prefit', 'shapes_fit_s'], ['prefit', 'postfit']):
         for b in ['pass', 'fail']:
             set_sns_color(args.color_order)
@@ -62,7 +87,7 @@ def make_stacked_plots(inputdir, workdir, args, plot_unce=True, save_plots=True,
             
             ## Upper histogram panel
             ax = f.add_subplot(gs[0])
-            hep.cms.label(data=True, llabel='Preliminary', year=args.year, ax=ax, rlabel=r'%s $fb^{-1}$ (13 TeV)' % args.lumi, fontname='sans-serif')
+            cms_label(ax, args.year, args.lumi)
             ax.set_xlim(xmin, xmax); ax.set_xticklabels([]); 
             ax.set_ylabel('Events / bin' if not logmsv_div_by_binw else 'Events / bin width × 0.1', ha='right', y=1.0)
 
@@ -119,17 +144,17 @@ def make_stacked_plots(inputdir, workdir, args, plot_unce=True, save_plots=True,
 def make_prepostfit_plots(inputdir, workdir, args, save_plots=True, **kwargs):
     r"""Make the prefit and postfit shape in one plot"""
 
-    edges = uproot.open(f'{inputdir}/inputs_pass.root:data_obs').axis().edges()
+    edges = uproot_open(f'{inputdir}/inputs_pass.root:data_obs').axis().edges()
     xmin, xmax, nbin = min(edges), max(edges), len(edges)
     plot_text = kwargs.get('plot_text', None)
     plot_subtext = kwargs.get('plot_subtext', None)
     # _logger.debug(f'Making pre/post fit plots: {workdir}')
 
     # All information read from fitDiagnosticsTest.root
-    fit = uproot.open(f'{workdir}/fitDiagnosticsTest.root')
+    fit = uproot_open(f'{workdir}/fitDiagnosticsTest.root')
     for b in ['pass', 'fail']:
         f, ax = plt.subplots(figsize=(12, 12))
-        hep.cms.label(data=True, llabel='Preliminary', year=args.year, ax=ax, rlabel=r'%s $fb^{-1}$ (13 TeV)' % args.lumi, fontname='sans-serif')
+        cms_label(ax, args.year, args.lumi)
         # fill in data
         data, data_errh, data_errl = fit[f'shapes_prefit/{b}/data'].values(1), fit[f'shapes_prefit/{b}/data'].errors('high')[1], fit[f'shapes_prefit/{b}/data'].errors('low')[1]
         hep.histplot(data, yerr=(data_errl, data_errh), bins=edges, label='Data', histtype='errorbar', color='k', markersize=15, elinewidth=1.5) ## draw data
@@ -175,7 +200,7 @@ def make_shape_unce_plots(inputdir, workdir, args, unce_type=None, save_plots=Tr
         norm_unce: Normalize the up/down uncertainty to nominal. Default: False
     """
 
-    edges = uproot.open(f'{inputdir}/inputs_pass.root:data_obs').axis().edges()
+    edges = uproot_open(f'{inputdir}/inputs_pass.root:data_obs').axis().edges()
     xmin, xmax, nbin = min(edges), max(edges), len(edges)
     plot_text = kwargs.get('plot_text', None)
     plot_subtext = kwargs.get('plot_subtext', None)
@@ -183,10 +208,10 @@ def make_shape_unce_plots(inputdir, workdir, args, unce_type=None, save_plots=Tr
 
     # curves for unce
     for b in ['pass', 'fail']:
-        content = [uproot.open(f'{inputdir}/inputs_{b}.root:{cat}').values() for cat in args.cat_order[::-1]]
-        yerror  = [np.sqrt(uproot.open(f'{inputdir}/inputs_{b}.root:{cat}').values()) for cat in args.cat_order[::-1]]
-        content_up   = [uproot.open(f'{inputdir}/inputs_{b}.root:{cat}_{unce_type}Up').values() for cat in args.cat_order[::-1]]
-        content_down = [uproot.open(f'{inputdir}/inputs_{b}.root:{cat}_{unce_type}Down').values() for cat in args.cat_order[::-1]]
+        content = [uproot_open(f'{inputdir}/inputs_{b}.root:{cat}').values() for cat in args.cat_order[::-1]]
+        yerror  = [np.sqrt(uproot_open(f'{inputdir}/inputs_{b}.root:{cat}').values()) for cat in args.cat_order[::-1]]
+        content_up   = [uproot_open(f'{inputdir}/inputs_{b}.root:{cat}_{unce_type}Up').values() for cat in args.cat_order[::-1]]
+        content_down = [uproot_open(f'{inputdir}/inputs_{b}.root:{cat}_{unce_type}Down').values() for cat in args.cat_order[::-1]]
         lab_suf = ''
         if norm_unce:
             lab_suf = '(norm)'
@@ -194,7 +219,7 @@ def make_shape_unce_plots(inputdir, workdir, args, unce_type=None, save_plots=Tr
                 content_up[icat] *= content[icat].sum() / content_up[icat].sum()
                 content_down[icat] *= content[icat].sum() / content_down[icat].sum()
         f, ax = plt.subplots(figsize=(12, 12))
-        hep.cms.label(data=True, llabel='Preliminary', year=args.year, ax=ax, rlabel=r'%s $fb^{-1}$ (13 TeV)' % args.lumi, fontname='sans-serif')
+        cms_label(ax, args.year, args.lumi)
         for icat, (cat, color) in enumerate(zip(args.cat_order[::-1], ['blue', 'red', 'green'])):
             hep.histplot(content[icat], yerr=yerror[icat], bins=edges, label=f'MC ({cat})', color=color)
         for icat, (cat, color) in enumerate(zip(args.cat_order[::-1], ['blue', 'red', 'green'])):
@@ -234,7 +259,6 @@ def make_generic_mc_data_plots(
         labels_mc: list of MC label strings (from bottom to top)
         colors_mc: list of MC color indices (from bottom to top)
     """
-    use_helvetica = kwargs.get('use_helvetica', False)
     plot_args = kwargs.get('plot_args', {})
     plot_text = kwargs.get('plot_text', None)
     plot_subtext = kwargs.get('plot_subtext', None)
@@ -244,15 +268,13 @@ def make_generic_mc_data_plots(
         sns.set_palette(*args)
 
     set_sns_color(colors_mc)
-    if use_helvetica == True or (use_helvetica == 'auto' and any(['Helvetica' in font for font in mpl.font_manager.findSystemFonts()])):
-        plt.style.use({"font.sans-serif": 'Helvetica'})
 
     f = plt.figure(figsize=(12, 12))
     gs = mpl.gridspec.GridSpec(2, 1, height_ratios=[3, 1], hspace=0.05) 
 
     ## Upper histogram panel
     ax = f.add_subplot(gs[0])
-    hep.cms.label(data=True, llabel='Preliminary', year=year, ax=ax, rlabel=r'%s $fb^{-1}$ (13 TeV)' % lumi, fontname='sans-serif')
+    cms_label(ax, year, lumi)
     xmin, xmax = min(edges), max(edges)
     ax.set_xlim(xmin, xmax); ax.set_xticklabels([]); 
     ax.set_ylabel(ylabel, ha='right', y=1.0)
@@ -272,7 +294,7 @@ def make_generic_mc_data_plots(
         ax.set_ylim(top=60*ax.get_ylim()[1])
     else:
         ax.set_ylim(0, 1.8*max(values_data))
-    ax.legend()
+    ax.legend(loc='upper right')
     if plot_text:
         ax.text(0.03, 0.92, plot_text, transform=ax.transAxes, fontweight='bold', fontsize=21)
     if plot_subtext:
@@ -332,12 +354,9 @@ def make_sfbdt_variation_plot(center, errl, errh, c_idx, sf, outputdir, args, pl
         artists = ax.errorbar(xdata, ydata, xerr=xerror, yerr=yerror, fmt='None', ecolor=facecolor, label=label)
         return artists
 
-    if args.use_helvetica == True or (args.use_helvetica == 'auto' and any(['Helvetica' in font for font in mpl.font_manager.findSystemFonts()])):
-        plt.style.use({"font.sans-serif": 'Helvetica'})
-
     # Plot SF points with errorbars
     f, ax = plt.subplots(figsize=(20, 10))
-    hep.cms.label(data=True, llabel='Preliminary', year=args.year, ax=ax, rlabel=r'%s $fb^{-1}$ (13 TeV)' % args.lumi, fontname='sans-serif')
+    cms_label(ax, args.year, args.lumi)
     x_ticks = list(np.arange(len(center)))
     n_csl = int(round(np.sqrt(len(center))))
     x_ticklabels = ['' for _ in x_ticks]
@@ -388,11 +407,8 @@ def make_fit_summary_plots(center, errl, errh, outputdir, args, plot_xticklabels
     x_ticks = np.arange(len(plot_xticklabels))  # the label locations
     width = 0.15  # the width of the bars
 
-    if args.use_helvetica == True or (args.use_helvetica == 'auto' and any(['Helvetica' in font for font in mpl.font_manager.findSystemFonts()])):
-        plt.style.use({"font.sans-serif": 'Helvetica'})
-
     f, ax = plt.subplots(figsize=(10, 10))
-    hep.cms.label(data=True, llabel='Preliminary', year=args.year, ax=ax, rlabel=r'%s $fb^{-1}$ (13 TeV)' % args.lumi, fontname='sans-serif')
+    cms_label(ax, args.year, args.lumi)
     ax.set_prop_cycle(custom_cycler)
     for yl in np.arange(0, 2.4, 0.2):
         ax.plot([-0.5, len(plot_xticklabels)+1], [yl, yl], ':', color='lightgrey')

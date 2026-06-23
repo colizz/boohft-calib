@@ -3,11 +3,12 @@ For step 2: calculate the sfBDT coastline on the target transformed tagger.
 
 """
 
-from coffea import processor, hist
+from coffea import processor
 import awkward as ak
+import hist
 import numpy as np
 import uproot
-import uproot3
+from uproot.source.file import MemmapSource
 import scipy
 
 import matplotlib.pyplot as plt
@@ -16,7 +17,6 @@ from cycler import cycler
 mpl.use('Agg')
 mpl.rcParams['axes.prop_cycle'] = cycler(color=['blue', 'red', 'green', 'violet', 'darkorange', 'black', 'cyan', 'yellow'])
 
-import boost_histogram as bh
 import mplhep as hep
 plt.style.use(hep.style.CMS)
 
@@ -26,9 +26,10 @@ import shutil
 import json
 import os
 
-from unit import ProcessingUnit
+from routines.base import ProcessingUnit
 from utils.web_maker import WebMaker
-from utils.tools import lookup_pt_based_weight, parse_tagger_expr, eval_expr
+from utils.tools import lookup_pt_based_weight, parse_tagger_expr, eval_expr, expression_names
+from utils.plotting import cms_label
 from utils.fast_splines import interp2d
 from utils.xgb_tools import XGBEnsemble
 from logger import _logger
@@ -45,6 +46,21 @@ class CoastlineCoffeaProcessor(processor.ProcessorABC):
         self.pt_reweight_edges = [edge[0] for edge in global_cfg.rwgt_pt_bins]
 
         self.tagger_expr = parse_tagger_expr(global_cfg.tagger_name_replace_map, global_cfg.tagger.expr)
+        self.required_branches = set(global_cfg.hlt_branches[global_cfg.year]) | {
+            'passmetfilters', 'ht',
+            'fj_1_is_qualified', 'fj_2_is_qualified',
+            'fj_1_pt', 'fj_2_pt',
+            'genWeight', 'xsecWeight', 'puWeight', 'l1PreFiringWeight',
+            'fj_1_nbhadrons', 'fj_1_nchadrons',
+            'fj_2_nbhadrons', 'fj_2_nchadrons',
+            'fj_1_sfBDT', 'fj_2_sfBDT',
+        }
+        for jet in ('fj_1', 'fj_2'):
+            self.required_branches.update(expression_names(self.tagger_expr.replace('fj_x', jet)))
+            if global_cfg.custom_selection is not None:
+                self.required_branches.update(expression_names(global_cfg.custom_selection.replace('fj_x', jet)))
+            for expr in global_cfg.sfbdt_input_exprs:
+                self.required_branches.update(expression_names(expr.replace('fj_x', jet)))
         self.lookup_mc_weight = partial(lookup_pt_based_weight, self.weight_map, self.pt_reweight_edges, jet_var_maxlimit=2500)
         if self.global_cfg.custom_sfbdt_path is not None:
             self.xgb = XGBEnsemble(
@@ -52,85 +68,122 @@ class CoastlineCoffeaProcessor(processor.ProcessorABC):
                 self.global_cfg.sfbdt_input_exprs,
             )
 
-        dataset = hist.Cat("dataset", "dataset")
-
         # fine 2D grids on tagger-sfBDT to derive the coastline
-        pt_bin = hist.Bin('pt', 'pt', list(global_cfg.pt_edges) + [100000])
-        sfbdt_grid = hist.Bin('sfbdt', 'sfbdt', self.nbin2d, 0., 1.)
-        xtagger_grid = hist.Bin('xtagger', 'xtagger', self.nbin2d, 0., 1.) # transformed tagger bin
-        h2d_grid = hist.Hist('Counts', dataset, pt_bin, sfbdt_grid, xtagger_grid)
+        dataset_axis = hist.axis.StrCategory(list(global_cfg.fileset_template.keys()), name='dataset')
+        h2d_grid = hist.Hist(
+            dataset_axis,
+            hist.axis.Variable(list(global_cfg.pt_edges) + [100000], name='pt'),
+            hist.axis.Regular(self.nbin2d, 0., 1., name='sfbdt'),
+            hist.axis.Regular(self.nbin2d, 0., 1., name='xtagger'),
+            storage=hist.storage.Weight(),
+        )
 
         # sfBDT 1D hist to derive data/MC discrepancy used for uncertainty
-        jetidx_cat = hist.Cat('jetidx', 'jetidx')
-        pt_finebin = hist.Bin('pt', 'pt', list(self.pt_reweight_edges))
-        sfbdt_bin = hist.Bin('sfbdt', 'sfbdt', 50, 0., 1.)
-        h_sfbdt = hist.Hist('Counts', dataset, jetidx_cat, pt_finebin, sfbdt_bin)
+        h_sfbdt = hist.Hist(
+            dataset_axis,
+            hist.axis.StrCategory([], growth=True, name='jetidx'),
+            hist.axis.Variable(list(self.pt_reweight_edges), name='pt'),
+            hist.axis.Regular(50, 0., 1., name='sfbdt'),
+            storage=hist.storage.Weight(),
+        )
 
-        self._accumulator = processor.dict_accumulator({
+        self._accumulator = {
             'h2d_grid': h2d_grid,
             'h_sfbdt': h_sfbdt,
-        })
+        }
 
     @property
     def accumulator(self):
         return self._accumulator
 
 
+    def _as_numpy(self, array):
+        return np.asarray(ak.to_numpy(array))
+
+
+    def _fill_h2d_grid(self, hist_, dataset, pt, sfbdt, xtagger, weight):
+        pt = self._as_numpy(pt)
+        if len(pt) == 0:
+            return
+        hist_.fill(
+            dataset=np.full(len(pt), dataset),
+            pt=pt,
+            sfbdt=self._as_numpy(sfbdt),
+            xtagger=self._as_numpy(xtagger),
+            weight=self._as_numpy(weight),
+        )
+
+
+    def _fill_sfbdt(self, hist_, dataset, jetidx, pt, sfbdt, weight):
+        pt = self._as_numpy(pt)
+        if len(pt) == 0:
+            return
+        hist_.fill(
+            dataset=np.full(len(pt), dataset),
+            jetidx=np.full(len(pt), jetidx),
+            pt=pt,
+            sfbdt=self._as_numpy(sfbdt),
+            weight=self._as_numpy(weight),
+        )
+
+
     def process(self, events):
-        out = self.accumulator.identity()
+        out = {key: value.copy() * 0 for key, value in self.accumulator.items()}
         dataset = events.metadata['dataset']
         is_mc = dataset != 'jetht'
 
-        presel = ak.numexpr.evaluate('passmetfilters & (' + '|'.join(self.global_cfg.hlt_branches[self.global_cfg.year]) + ')', events)
+        presel = eval_expr('passmetfilters & (' + '|'.join(self.global_cfg.hlt_branches[self.global_cfg.year]) + ')', events)
         lumi = self.global_cfg.lumi_dict[self.global_cfg.year]
 
         for i in '12': # jet index
-            custom_sel = ak.numexpr.evaluate(self.global_cfg.custom_selection.replace('fj_x', f'fj_{i}'), events) if self.global_cfg.custom_selection is not None else ak.ones_like(presel, dtype=bool)
+            custom_sel = eval_expr(self.global_cfg.custom_selection.replace('fj_x', f'fj_{i}'), events) if self.global_cfg.custom_selection is not None else ak.ones_like(presel, dtype=bool)
             events_fj = events[(presel) & (events[f'fj_{i}_is_qualified']) & (custom_sel)]
 
             # calculate weights and flavour variables
             if is_mc:
                 # calculate the MC-to-data weigts only for MC
                 mc_weight = self.lookup_mc_weight(f'fj{i}', events_fj[f'fj_{i}_pt'], events_fj['ht'])
-                weight = ak.numexpr.evaluate(f'genWeight*xsecWeight*puWeight*l1PreFiringWeight*{lumi}', events_fj) * mc_weight
+                weight = eval_expr(f'genWeight*xsecWeight*puWeight*l1PreFiringWeight*{lumi}', events_fj) * mc_weight
                 assert self.global_cfg.type in ['bb', 'cc', 'qq'], "Calibration type must be 'bb', 'cc', or 'qq'."
                 if self.global_cfg.type == 'bb':
-                    flv_sel = ak.numexpr.evaluate(f'fj_{i}_nbhadrons >= 1', events_fj)
+                    flv_sel = eval_expr(f'fj_{i}_nbhadrons >= 1', events_fj)
                 elif self.global_cfg.type == 'cc':
-                    flv_sel = ak.numexpr.evaluate(f'(fj_{i}_nbhadrons == 0) & (fj_{i}_nchadrons >= 1)', events_fj)
+                    flv_sel = eval_expr(f'(fj_{i}_nbhadrons == 0) & (fj_{i}_nchadrons >= 1)', events_fj)
                 elif self.global_cfg.type == 'qq':
-                    flv_sel = ak.numexpr.evaluate(f'(fj_{i}_nbhadrons == 0) & (fj_{i}_nchadrons == 0)', events_fj)
+                    flv_sel = eval_expr(f'(fj_{i}_nbhadrons == 0) & (fj_{i}_nchadrons == 0)', events_fj)
             else:
                 weight = ak.ones_like(events_fj.ht)
 
             # fill into histograms for each WP (range choices on tagger), MC only, flavour selection applied
             if self.global_cfg.custom_sfbdt_path is not None:
-                sfbdt_inputs = {v: ak.numexpr.evaluate(v.replace('fj_x', f'fj_{i}'), events_fj) for v in self.global_cfg.sfbdt_input_exprs}
+                sfbdt_inputs = {v: eval_expr(v.replace('fj_x', f'fj_{i}'), events_fj) for v in self.global_cfg.sfbdt_input_exprs}
                 sfbdt = ak.Array(self.xgb.eval(sfbdt_inputs))
             else:
                 sfbdt = events_fj[f'fj_{i}_sfBDT']
             if is_mc:
-                tagger_flv_sel = ak.numexpr.evaluate(self.tagger_expr.replace('fj_x', f'fj_{i}'), events_fj[flv_sel])
+                tagger_flv_sel = eval_expr(self.tagger_expr.replace('fj_x', f'fj_{i}'), events_fj[flv_sel])
                 # check how many event are beyond the tagger span
                 if (np.sum(tagger_flv_sel < self.global_cfg.tagger.span[0]) + np.sum(tagger_flv_sel > self.global_cfg.tagger.span[1])) / len(tagger_flv_sel) > 0.01:
                     _logger.warning(f"More than 1% of events are beyond the tagger span {self.global_cfg.tagger.span}. Is it expected?")
                 tagger_flv_sel = np.clip(tagger_flv_sel, *self.global_cfg.tagger.span)
                 xtagger_flv_sel = self.xtagger_map(tagger_flv_sel)
-                out[f'h2d_grid'].fill(
-                    dataset=dataset,
-                    pt=events_fj[f'fj_{i}_pt'][flv_sel],
-                    sfbdt=sfbdt[flv_sel],
-                    xtagger=xtagger_flv_sel,
-                    weight=weight[flv_sel],
+                self._fill_h2d_grid(
+                    out[f'h2d_grid'],
+                    dataset,
+                    events_fj[f'fj_{i}_pt'][flv_sel],
+                    sfbdt[flv_sel],
+                    xtagger_flv_sel,
+                    weight[flv_sel],
                 )
 
             # fill the sfbdt histograms for all MC and data, without flavour selection
-            out[f'h_sfbdt'].fill(
-                dataset=dataset,
-                jetidx=i,
-                pt=events_fj[f'fj_{i}_pt'],
-                sfbdt=sfbdt,
-                weight=weight,
+            self._fill_sfbdt(
+                out[f'h_sfbdt'],
+                dataset,
+                i,
+                events_fj[f'fj_{i}_pt'],
+                sfbdt,
+                weight,
             )
 
         return out
@@ -175,7 +228,13 @@ class CoastlineUnit(ProcessingUnit):
         if not hasattr(anatree, 'provide_tagger_array') or anatree.provide_tagger_array:
             # read the tagger array from the main analysis signal tree
             self.provide_tagger_array = True
-            df = uproot.lazy(anatree.path.replace("$YEAR", str(self.global_cfg.year)) + ':' + anatree.treename)
+            signal_branches = set(expression_names(anatree.selection))
+            signal_branches.update(expression_names(anatree.tagger))
+            signal_branches.update(expression_names(anatree.weight))
+            df = uproot.open(anatree.path.replace("$YEAR", str(self.global_cfg.year)) + ':' + anatree.treename, handler=MemmapSource).arrays(
+                filter_name=sorted(signal_branches),
+                library='ak',
+            )
             anatree_selection = eval_expr(anatree.selection, df)
 
             tagger = eval_expr(anatree.tagger, df)[anatree_selection]
@@ -187,21 +246,23 @@ class CoastlineUnit(ProcessingUnit):
             tagger, weight = tagger[sel], weight[sel]
 
             nbin_hist = 1000
-            hist = bh.Histogram(bh.axis.Regular(nbin_hist, tmin, tmax), storage=bh.storage.Weight())
-            hist.fill(tagger, weight=weight)
+            hsig = hist.Hist(hist.axis.Regular(nbin_hist, tmin, tmax, name='tagger'), storage=hist.storage.Weight())
+            hsig.fill(tagger=tagger, weight=weight)
 
         else:
             # use provided histogram as the direct template
             self.provide_tagger_array = False
             tmin, tmax = self.global_cfg.tagger.span
-            hist = uproot.open(anatree.path.replace("$YEAR", str(self.global_cfg.year)) + ':' + anatree.histname).to_boost()
-            nbin_hist = hist.axes[0].size
-            assert tmin == hist.axes[0].edges[0] and tmax == hist.axes[0].edges[-1], \
-                f"Provide tagger shape histogram has range [{hist.axes[0].edges[0]}, {hist.axes[0].edges[-1]}] which does not match with the tagger span."
+            hroot = uproot.open(anatree.path.replace("$YEAR", str(self.global_cfg.year)) + ':' + anatree.histname, handler=MemmapSource)
+            edges = hroot.axis().edges()
+            hsig = hroot.to_hist()
+            nbin_hist = len(edges) - 1
+            assert tmin == edges[0] and tmax == edges[-1], \
+                f"Provide tagger shape histogram has range [{edges[0]}, {edges[-1]}] which does not match with the tagger span."
 
         # cumulative distribution of the tagger:
         x = np.linspace(tmin, tmax, nbin_hist + 1)
-        y = np.maximum(hist.values(), 1e-5)
+        y = np.maximum(hsig.values(), 1e-5)
         y_cum = np.insert(np.cumsum(y / sum(y)), 0, 0.)
         # plt.plot(x, y_cum); plt.show()
 
@@ -211,16 +272,16 @@ class CoastlineUnit(ProcessingUnit):
         if self.provide_tagger_array:
             # also store the signal hist info for later plot making
             xtagger = self.xtagger_map(tagger)
-            hist = bh.Histogram(bh.axis.Regular(50, tmin, tmax), storage=bh.storage.Weight())
-            hist.fill(tagger, weight=weight)
-            xhist = bh.Histogram(bh.axis.Regular(50, 0., 1.), storage=bh.storage.Weight())
-            xhist.fill(xtagger, weight=weight)
+            hsig = hist.Hist(hist.axis.Regular(50, tmin, tmax, name='tagger'), storage=hist.storage.Weight())
+            hsig.fill(tagger=tagger, weight=weight)
+            xhist = hist.Hist(hist.axis.Regular(50, 0., 1., name='xtagger'), storage=hist.storage.Weight())
+            xhist.fill(xtagger=xtagger, weight=weight)
             self.signal_hist_info = {
-                't_x': x, 't_y': y_cum, 'hist': hist, 'xhist': xhist
+                't_x': x, 't_y': y_cum, 'hist': hsig, 'xhist': xhist
             }
         else:
             self.signal_hist_info = {
-                't_x': x, 't_y': y_cum, 'hist': hist, 'xhist': None
+                't_x': x, 't_y': y_cum, 'hist': hsig, 'xhist': None
             }
 
         with open(os.path.join(self.outputdir, 'xtagger_map.pickle'), 'wb') as fw:
@@ -269,7 +330,7 @@ class CoastlineUnit(ProcessingUnit):
         self.coastline_map = []
     
         # the xtagger-sfBDT map for all pT ranges (under/overflow included)
-        bh2d_pts = self.result['h2d_grid'].integrate('dataset').to_boost()
+        bh2d_pts = self.result['h2d_grid'].project('pt', 'sfbdt', 'xtagger')
         for ipt in range(1, len(self.global_cfg.pt_edges) + 1):
             arr2d = bh2d_pts.view(flow=True).value[ipt][1:-1, 1:-1].T # (dim_tagger, dim_sfbdt)
             arr2d_norm = arr2d / np.sum(arr2d)
@@ -305,16 +366,17 @@ class CoastlineUnit(ProcessingUnit):
 
         # 3. Store the sfBDT reweight hist to json file
         hist_values = {}
-        h_sfbdt = self.result['h_sfbdt'].to_boost()
+        h_sfbdt = self.result['h_sfbdt']
+        datasets = list(h_sfbdt.axes[0])
         for ipt, (ptmin, ptmax) in enumerate(self.global_cfg.rwgt_pt_bins):
             for i in '12':
-                sam_axes = h_sfbdt.axes[0]
-                pt_loc = ipt if ipt != len(self.global_cfg.rwgt_pt_bins)-1 else bh.overflow
+                pt_loc = ipt if ipt != len(self.global_cfg.rwgt_pt_bins)-1 else hist.overflow
                 # data and MC sfBDT 1D histogram
-                h_data_fj = h_sfbdt[bh.loc('jetht'), bh.loc(i), pt_loc, :]
-                h_mc_fj = bh.sum(
-                    [h_sfbdt[bh.loc(sam_axes.value(k)), bh.loc(i), pt_loc, :] \
-                        for k in range(sam_axes.size) if sam_axes.value(k) != 'jetht']
+                h_data_fj = h_sfbdt[{'dataset': 'jetht', 'jetidx': i, 'pt': pt_loc}].project('sfbdt')
+                mc_datasets = [dataset for dataset in datasets if dataset != 'jetht']
+                h_mc_fj = sum(
+                    (h_sfbdt[{'dataset': dataset, 'jetidx': i, 'pt': pt_loc}].project('sfbdt') for dataset in mc_datasets),
+                    h_data_fj.copy() * 0,
                 )
                 # store hist into numerical values
                 _stored = {
@@ -336,9 +398,6 @@ class CoastlineUnit(ProcessingUnit):
         if not hasattr(self, 'coastline_map') or self.coastline_map is None:
             self.load_pickle('coastline_map')
 
-        # Configure mplhep
-        if self.global_cfg.use_helvetica == True or (self.global_cfg.use_helvetica == 'auto' and any(['Helvetica' in font for font in mpl.font_manager.findSystemFonts()])):
-            plt.style.use({"font.sans-serif": 'Helvetica'})
         year, lumi = self.global_cfg.year, self.global_cfg.lumi_dict[self.global_cfg.year]
 
         # Init the web maker
@@ -346,7 +405,7 @@ class CoastlineUnit(ProcessingUnit):
 
         # first make the tagger transformation map
         f, ax = plt.subplots(figsize=(10, 10))
-        hep.cms.label(data=True, llabel='Preliminary', year=year, ax=ax, rlabel=r'%s $fb^{-1}$ (13 TeV)' % lumi, fontname='sans-serif')
+        cms_label(ax, year, lumi)
         tmin, tmax = self.global_cfg.tagger.span
         ax.plot(self.signal_hist_info['t_x'], self.signal_hist_info['t_y'], color='royalblue')
         ax.set_xlim(tmin, tmax); ax.set_ylim(0., 1.)
@@ -363,7 +422,7 @@ class CoastlineUnit(ProcessingUnit):
         for histname, desc, xlims, xtitle, color in zip(['hist', 'xhist'], ['original', 'transformed'], \
             [(0., 1.), (tmin, tmax)], [getattr(self.global_cfg.tagger, "label", "Tagger"), f'Transformed {getattr(self.global_cfg.tagger, "label", "Tagger")}'], ['grey', 'royalblue']):
             f, ax = plt.subplots(figsize=(10, 10))
-            hep.cms.label(data=True, llabel='Preliminary', year=year, ax=ax, rlabel=r'%s $fb^{-1}$ (13 TeV)' % lumi, fontname='sans-serif')
+            cms_label(ax, year, lumi)
             h = self.signal_hist_info[histname]
             if h is not None:
                 hep.histplot(h.values(), yerr=np.sqrt(h.variances()), bins=h.axes[0].edges, label='Signal', color=color)
@@ -390,7 +449,7 @@ class CoastlineUnit(ProcessingUnit):
             web.add_text(f"Applied selection: `{anatree.selection}`. Tagger name/expression: `{anatree.tagger}`\n")
             web.add_text(f"Defined WPs: {self.global_cfg.tagger.wps}\n")
             web.add_text(r"This corresponds to the signal effiency at: {%s}" %
-                ', '.join([f'{wp}: [{lo*100:.1f}\%, {hi*100:.1f}\%]' for wp, (lo, hi) in zip(self.global_cfg.tagger.wps.keys(), sig_effs)]))
+                ', '.join([f'{wp}: [{lo*100:.1f}\\%, {hi*100:.1f}\\%]' for wp, (lo, hi) in zip(self.global_cfg.tagger.wps.keys(), sig_effs)]))
             web.add_text()
         else:
             web.add_text(f"Provided signal tagger shape in histogram: `{anatree.path.replace('$YEAR', str(self.global_cfg.year))}:{anatree.histname}`.")
@@ -410,7 +469,7 @@ class CoastlineUnit(ProcessingUnit):
         web.add_h2('Transformed tagger - sfBDT 2D distribution')
         for i, (ptmin, ptmax) in enumerate(zip(pt_edges[:-1], pt_edges[1:])):
             f, ax = plt.subplots(figsize=(10, 10))
-            hep.cms.label(data=True, llabel='Preliminary', year=year, ax=ax, rlabel=r'%s $fb^{-1}$ (13 TeV)' % lumi, fontname='sans-serif')
+            cms_label(ax, year, lumi)
             arr2d =  self.coastline_map[i]['arr2d']
             arr2d[arr2d == 0.] = np.nan # leave the pixel blank if no entry
             im = ax.imshow(arr2d[:, ::-1].T, norm=mpl.colors.LogNorm(), interpolation='nearest', extent=[0, 1, 0, 1], cmap=plt.cm.jet)
@@ -429,7 +488,7 @@ class CoastlineUnit(ProcessingUnit):
         for i, (ptmin, ptmax) in enumerate(zip(pt_edges[:-1], pt_edges[1:])):
             # draw contour as the coastlines
             f, ax = plt.subplots(figsize=(10, 10))
-            hep.cms.label(data=True, llabel='Preliminary', year=year, ax=ax, rlabel=r'%s $fb^{-1}$ (13 TeV)' % lumi, fontname='sans-serif')
+            cms_label(ax, year, lumi)
             step = 1./ self.nbin2d
             x = y = np.arange(step/2, 1. + step/2, step) ## 200 bins correspond to the hist
             Y, X = np.meshgrid(y, x)

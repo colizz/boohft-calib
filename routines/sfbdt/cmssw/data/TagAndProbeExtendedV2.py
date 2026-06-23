@@ -4,7 +4,7 @@ from HiggsAnalysis.CombinedLimit.PhysicsModel import PhysicsModel
 class TagAndProbeExtendedV2(PhysicsModel):
 
     def __init__(self):
-        super(PhysicsModel, self).__init__()
+        super().__init__()
 
     def _getProcessCategory(self, process):
         ret = None

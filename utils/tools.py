@@ -4,12 +4,22 @@ import re
 
 from logger import _logger
 
+
+def expression_names(expr, exclude=('awkward', 'ak', 'np', 'numpy', 'math')):
+    """Extract variable names from a Python expression."""
+    import ast
+    root = ast.parse(expr)
+    return sorted({
+        node.id for node in ast.walk(root)
+        if isinstance(node, ast.Name) and not node.id.startswith('_')
+    } - set(exclude))
+
 def lookup_pt_based_weight(weight_map, pt_reweight_edges, jet_idx, jet_pt, jet_var, jet_var_maxlimit=None, read_suffix=''):
     r"""Obtain the pT-based weight using the weight map. jet_idx: 'fj1' or 'fj2'."""
 
     assert jet_var_maxlimit is not None, "Need to specify a jet_var_maxlimit."
     # flatten the 2d weight factor map
-    selected_weight_names = [c for c in weight_map if re.match(f'{jet_idx}_pt\d+to\d+{read_suffix}$', c)]
+    selected_weight_names = [c for c in weight_map if re.match(fr'{jet_idx}_pt\d+to\d+{read_suffix}$', c)]
     weight_map_flatten = ak.flatten(ak.Array([weight_map[c]['h_w'] for c in selected_weight_names]))
     var_edges_list = [([0] + weight_map[c]['edges']) for c in selected_weight_names]
     flatten_edges = [edge + ivar * jet_var_maxlimit for ivar, var_edges in enumerate(var_edges_list) for edge in var_edges]
@@ -47,17 +57,13 @@ def parse_tagger_expr(tagger_name_replace_map, expr):
 
 def eval_expr(expr, events):
     """A function that can do `eval` to the awkward array, immitating the behavior of `eval` in pandas."""
-    
-    def get_variable_names(expr, exclude=['awkward', 'ak', 'np', 'numpy', 'math']):
-        """Extract variables in the expr"""
-        import ast
-        root = ast.parse(expr)
-        return sorted({node.id for node in ast.walk(root) if isinstance(node, ast.Name) and not node.id.startswith('_')} - set(exclude))
 
     try:
-        return ak.numexpr.evaluate(expr, events)
+        import numexpr
+        local_dict = {k: ak.to_numpy(events[k]) for k in expression_names(expr)}
+        return ak.Array(numexpr.evaluate(expr, local_dict=local_dict))
     except:
         import math
-        tmp = {k: events[k] for k in get_variable_names(expr)}
+        tmp = {k: events[k] for k in expression_names(expr)}
         tmp.update({'math': math, 'numpy': np, 'np': np, 'awkward': ak, 'ak': ak})
         return eval(expr, tmp)

@@ -1,13 +1,15 @@
 #!/bin/bash
 
 WORKDIR=$PWD
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 # trick for SWAN: unset previous python env
 unset PYTHONPATH
 unset PYTHONHOME
 # load CMSSW environment
 source /cvmfs/cms.cern.ch/cmsset_default.sh
-export RELEASE=CMSSW_10_2_27
+export SCRAM_ARCH=${SCRAM_ARCH:-el9_amd64_gcc12}
+export RELEASE=${BOOHFT_CMSSW_RELEASE:-CMSSW_14_1_9_patch2}
 if [ -r $RELEASE/src ] ; then
   echo found $RELEASE
 else
@@ -19,4 +21,4 @@ eval `scram runtime -sh`
 
 # launch the fit
 cd $WORKDIR
-python $WORKDIR/cmssw/fit.py $@
+python3 "$SCRIPT_DIR/fit.py" "$@"

@@ -5,7 +5,7 @@ The tool runs under the Run 2 UL condition using NanoAODv9.
 It is designed for the calibration of any Xbb/Xcc type taggers composed of the branches in NanoAODv9. 
 
 Users should specify in a data card the tagger expression, pre-defined WPs, etc., and a signal ROOT tree for extraction of the necessary signal tagger shape.
-See details in the [example YMAL card](cards/example_bb_PNetXbbVsQCD.yml) for calibrating the ParticleNet XbbVsQCD score.
+See details in the [example YAML card](cards/sfbdt/example_bb_PNetXbbVsQCD.yml) for calibrating the ParticleNet XbbVsQCD score.
 
 The introduction of the method can be found in the [BTV slides](https://indico.cern.ch/event/1120932/#23-calibration-of-ul20172018-x).
 Detailed documentation is provided in [AN-21-005](https://cms.cern.ch/iCMS/jsp/db_notes/noteInfo.jsp?cmsnoteid=CMS%20AN-2021/005) (the sfBDT method).
@@ -17,26 +17,40 @@ To see the example of the generated webpage, please refer to the above BTV slide
 
 1. Run on a local cluster
 
-First set up the environment. We recommand to use Miniconda:
+First set up the LCG environment:
 ```bash
-wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-bash Miniconda3-latest-Linux-x86_64.sh -b -p ./miniconda  # for test: put the miniconda folder here
-source miniconda/bin/activate
-# clone the repo
+source /cvmfs/sft.cern.ch/lcg/views/LCG_110/x86_64-el9-gcc15-opt/setup.sh
+
+# clone the repo if needed
 git clone https://github.com/colizz/boohft-calib.git && cd boohft-calib
-# install packages
-conda env create -f conda_env.yml
-conda activate boohft-calib
 ```
 
-Run the tool in one command, e.g.,
+The tool is tested with the LCG_110 Python stack, which provides the required
+packages such as ROOT/PyROOT, uproot, coffea, awkward, hist/boost-histogram,
+mplhep, xgboost, scipy, numpy, matplotlib, and PyYAML. No local conda or
+miniconda environment is required.
+
+Run the sfBDT routine in one command, e.g.,
 ```bash
-python launcher.py cards/example_bb_PNetXbbVsQCD.yml
+python launcher.py cards/sfbdt/example_bb_PNetXbbVsQCD.yml --routine sfbdt --workers 10 10 10 70
 ```
+
+`sfbdt` is currently the default routine, so `--routine sfbdt` may be omitted.
+The four-step routine can also be run one step at a time:
+```bash
+python launcher.py cards/sfbdt/example_bb_PNetXbbVsQCD.yml --routine sfbdt --workers 10 10 10 70 -s 1000
+python launcher.py cards/sfbdt/example_bb_PNetXbbVsQCD.yml --routine sfbdt --workers 10 10 10 70 -s 0100
+python launcher.py cards/sfbdt/example_bb_PNetXbbVsQCD.yml --routine sfbdt --workers 10 10 10 70 -s 0010
+python launcher.py cards/sfbdt/example_bb_PNetXbbVsQCD.yml --routine sfbdt --workers 10 10 10 70 -s 0001
+```
+
+The example routine has been validated under LCG_110 for steps 1-3 with the
+commands above. Step 4 depends on the fit workflow and is not included in this
+LCG_110 validation note.
 
 Try `python launcher.py --help` for more information on the command arguments.
 
-Note: the tool uses 8 concurrent workers by default. On lxplus it will run by estimation 4 hrs for an entire routine. Sepcify more workers if you have more CPU resource.
+Note: the tool uses 5 concurrent workers by default. On lxplus it will run by estimation 4 hrs for an entire routine. Specify more workers if you have more CPU resource.
 
 2. Run on SWAN
 
@@ -44,18 +58,21 @@ Note: the tool uses 8 concurrent workers by default. On lxplus it will run by es
 
 Each routine will run by estimation 8 hrs on SWAN.
 
-To run on SWAN, click the link, start a SWAN session with LCG96 Python3 stack (4 cores, 16GB), then open the `launcher_swan.ipynb` notebook and run all the blocks. This will launch a routine configured by the example card.
+To run on SWAN, click the link, start a SWAN session with the LCG_110 Python stack
+or source the same LCG view in the notebook, then open the `launcher_swan.ipynb`
+notebook and run all the blocks. This will launch a routine configured by the
+example card.
 
 ## Configuration card
 
-The configuration card (e.g., the example card `cards/example_bb_PNetXbbVsQCD.yml`) defines everything for a routine. As a brief summary, users should specify
+The configuration card (e.g., the example card `cards/sfbdt/example_bb_PNetXbbVsQCD.yml`) defines everything for a routine. As a brief summary, users should specify
  - the type of calibration: can be `bb`, `cc`, or `qq`;
  - the year of UL condition: can be `2016APV`, `2016`, `2017`, or `2018`;
  - jet pT ranges for deriving separate SFs;
  - the tagger information, including the tagger name/expression, the span, and the custom WPs defined in the user's analysis;
  - info of a signal ROOT tree taken from the user's analysis which the tool uses for extracting the signal tagger shape.
 
-See detailed explanation in the example card [`cards/example_bb_PNetXbbVsQCD.yml`](cards/example_bb_PNetXbbVsQCD.yml).
+See detailed explanation in the example card [`cards/sfbdt/example_bb_PNetXbbVsQCD.yml`](cards/sfbdt/example_bb_PNetXbbVsQCD.yml).
 
 --------
 ## Update notes

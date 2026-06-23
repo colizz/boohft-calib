@@ -14,14 +14,14 @@ year: 2018
 
 ## Prefix of the main samples produced from NanoHRT. $YEAR is a placeholder of year in the format above
 ## This need not be changed except for expert use.
-sample_prefix: /eos/user/c/coli/cms-repo/boohft-calib/samples/20221126_ULNanoV9_sfbdtThres0_ak8_qcd_$YEAR
+sample_prefix: /data/pku/home/licq/hcc/new/samples/trees_sf/20221126_ULNanoV9_sfbdtThres0_rerun_ak8_qcd_$YEAR
 
 ## Jet pT edges to define multiple exclusive ranges for fit
 ## e.g. for edges [e1, e2, e3], will define three pT range [e1, e2), [e2, e3), [e3, +inf)
 pt_edges: [450, 500, 600]
 
 # Specify the sfBDT model to use (no need for modification)
-custom_sfbdt_path: /eos/user/c/coli/cms-repo/boohft-calib/sfbdt_models/20221106/tau31_10_10_fj1_model/std/xgb_train.model
+custom_sfbdt_path: /data/pku/home/sdeng/sfbdt/20221106/tau31_10_10_fj1_model/std/xgb_train.model
 custom_sfbdt_kfold: 5
 
 #######################
@@ -49,7 +49,7 @@ tagger:
 main_analysis_tree:
   ## path: ROOT file path of the user's signal sample. $YEAR is a placeholder of year in the format above
   ## treename: the name of the tree to read in the file
-  path: /eos/user/c/coli/cms-repo/boohft-calib/samples/20220922_ULNanoV9_higgs_ak8_higgs_$YEAR/mc/gghbb_tree.root
+  path: /data/pku/home/licq/hcc/new/samples/trees_sf/202200922_ULNanoV9_higgs_ak8_higgs_$YEAR/mc/gghbb_tree.root
   treename: Events
 
   ## The selection used for this sample applied in the user's analysis. This will ensure us to find the

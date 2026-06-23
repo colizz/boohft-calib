@@ -5,7 +5,6 @@ For step 4: apply the fit to derive SFs, then make plots for the fit.
 
 import numpy as np
 import uproot
-import uproot3
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -25,10 +24,16 @@ import json
 import os
 import re
 
-from unit import ProcessingUnit, StandaloneMultiThreadedUnit
+from routines.base import ProcessingUnit, StandaloneMultiThreadedUnit
 from utils.web_maker import WebMaker
 from utils.plotting import make_shape_unce_plots, make_prepostfit_plots, make_stacked_plots, make_sfbdt_variation_plot, make_fit_summary_plots
 from logger import _logger
+
+
+CMSSW_DIR = os.path.join(os.path.dirname(__file__), 'cmssw')
+CMSSW_WRAPPER = os.path.join(CMSSW_DIR, 'wrapper.sh')
+CMSSW_ENV_SETUP = os.path.join(CMSSW_DIR, 'env_setup.sh')
+CMSSW_LAUNCH_FIT = os.path.join(CMSSW_DIR, 'launch_fit.sh')
 
 
 def runcmd(cmd, shell=True):
@@ -89,7 +94,6 @@ class FitUnit(ProcessingUnit):
             run_full_unce_breakdown_for_central_fit=self.global_cfg.run_full_unce_breakdown_for_central_fit,
             set_bounds=self.global_cfg.set_bounds,
             set_bounds_main_poi=self.global_cfg.set_bounds_main_poi,
-            use_helvetica=self.global_cfg.use_helvetica,
             color_order=sns.color_palette('cubehelix', 3),
             cat_order=['flvL', 'flvC', 'flvB'] if self.global_cfg.type=='bb' \
                 else ['flvL', 'flvB', 'flvC'] if self.global_cfg.type=='cc' else ['flvC', 'flvB', 'flvL'],
@@ -97,6 +101,7 @@ class FitUnit(ProcessingUnit):
             xlabel=r'$log(m_{SV1,d_{xy}sig\,max}\; /GeV)$',
             tagger_label=getattr(self.global_cfg.tagger, "label", "Tagger"),
             logmsv_div_by_binw=self.global_cfg.logmsv_div_by_binw,
+            test_n_fit=self.global_cfg.test_n_fit,
         )
 
     def postprocess(self):
@@ -105,7 +110,7 @@ class FitUnit(ProcessingUnit):
 
         # 1. Setup CMSSW environment
         _logger.info("[Postprocess]: Set up the CMSSW environment...")
-        out, ret = runcmd("bash cmssw/wrapper.sh cmssw/env_setup.sh")
+        out, ret = runcmd(f"bash {CMSSW_WRAPPER} {CMSSW_ENV_SETUP}")
         if ret != 0:
             _logger.exception("Error running cmssw setup:\n\n" + out)
             raise
@@ -124,6 +129,15 @@ class FitUnit(ProcessingUnit):
             # Launch in three fit mode:
             n_fit = 0
             args_collection = []
+
+            def append_fit(path, workpath, is_central, mode):
+                nonlocal n_fit
+                if self.global_cfg.test_n_fit != -1 and n_fit >= self.global_cfg.test_n_fit:
+                    return False
+                args_collection.append((path, workpath, self.fit_options, is_central, mode,))
+                n_fit += 1
+                return True
+
             for mode, readflag in zip(['main', 'sfbdt_rwgt', 'fit_var_rwgt'], \
                 [self.global_cfg.do_main_fit, self.global_cfg.do_sfbdt_rwgt_fit, self.global_cfg.do_fit_var_rwgt_fit]):
                 if readflag: # ok, will run this fit scheme
@@ -135,17 +149,14 @@ class FitUnit(ProcessingUnit):
                         if is_central:
                             # launch central BDT first as it may take longer time
                             # the central BDT cut is the nominal fit point. Run more fit utilities for these cases
-                            args_collection.append((path, workpath, self.fit_options, is_central, mode,))
-                            n_fit += 1
-                            if self.global_cfg.test_n_fit != -1 and n_fit >= self.global_cfg.test_n_fit:
+                            if not append_fit(path, workpath, True, mode):
                                 return args_collection
                         else:
                             non_central_fit.append((path, workpath))
                     if not self.global_cfg.run_central_fit_only:
                         for path, workpath in non_central_fit:
                             # launch non-central points after all central ones are submitted
-                            args_collection.append((path, workpath, self.fit_options, is_central, mode,))
-                            if self.global_cfg.test_n_fit != -1 and n_fit >= self.global_cfg.test_n_fit:
+                            if not append_fit(path, workpath, False, mode):
                                 return args_collection
             return args_collection
 
@@ -170,6 +181,25 @@ class FitUnit(ProcessingUnit):
         """
 
         _logger.info('[Make webpage]: Collecting all derived SF results and plots in one webpage.')
+        if self.global_cfg.test_n_fit != -1:
+            web = WebMaker(self.job_name)
+            web.add_h1('Step 4 test fit summary')
+            web.add_text(f'`test_n_fit = {self.global_cfg.test_n_fit}`: only completed fit points are summarized.')
+            fit_logs = sorted(glob.glob(os.path.join(self.outputdir, '*', '*', '*', '*', 'fit.log')))
+            if len(fit_logs) == 0:
+                web.add_text('No `fit.log` files were produced.')
+            for fit_log in fit_logs:
+                web.add_h2(os.path.relpath(os.path.dirname(fit_log), self.outputdir))
+                sf_lines = []
+                with open(fit_log) as f:
+                    for line in f:
+                        cols = line.split()
+                        if len(cols) > 0 and cols[0].startswith('SF_flv'):
+                            sf_lines.append(line.rstrip())
+                web.add_text('```text\n' + ('\n'.join(sf_lines) if sf_lines else 'No SF lines found.') + '\n```')
+            web.write_to_file(self.webdir)
+            return
+
         pt_edges = self.global_cfg.pt_edges + [100000]
         pt_edge_pairs = [(ptmin, ptmax) for ptmin, ptmax in zip(pt_edges[:-1], pt_edges[1:])]
         pt_list = [f'pt{ptmin}to{ptmax}' for ptmin, ptmax in zip(pt_edges[:-1], pt_edges[1:])]
@@ -606,7 +636,7 @@ class FitUnit(ProcessingUnit):
 def concurrent_fit_unit(arg):
     r"""A unit function to run a single fit point for the given workdir.
     This function is launched in the multiprocessing pool.
-    Inherit from the fit code from https://github.com/colizz/ParticleNet-CCTagCalib/blob/main/cmssw/fit.py
+    Inherit from the fit code from the legacy CMSSW wrapper used by this routine
       and plotting code from https://github.com/colizz/ParticleNet-CCTagCalib/blob/main/make_plots.py
 
     Sealed arguments:
@@ -622,7 +652,8 @@ def concurrent_fit_unit(arg):
     if not args.skip_fit:
         # _logger.debug("Run fit point " + workdir)
         ext_args = ''
-        if is_central:
+        is_test_fit = getattr(args, 'test_n_fit', -1) != -1
+        if is_central and not is_test_fit:
             if args.run_impact_for_central_fit:
                 ext_args += '--run-impact --run-unce-breakdown '
             if args.run_full_unce_breakdown_for_central_fit and mode == 'main':
@@ -635,19 +666,16 @@ def concurrent_fit_unit(arg):
             assert isinstance(args.set_bounds_main_poi, list) and len(args.set_bounds_main_poi) == 2
             lower, upper = args.set_bounds_main_poi
             ext_args += f'--bound-main-poi={lower},{upper} '
-        out, ret = runcmd(f"bash cmssw/wrapper.sh cmssw/launch_fit.sh {inputdir} {workdir} --year={args.year} --type={args.type} --mode={mode} {ext_args}")
+        out, ret = runcmd(f"bash {CMSSW_WRAPPER} {CMSSW_LAUNCH_FIT} {inputdir} {workdir} --year={args.year} --type={args.type} --mode={mode} {ext_args}")
         if ret != 0:
             _logger.error("Error running the fit point: " + workdir + "\n" + \
                 "See the following output (from last few lines):\n\n" + '\n'.join(out.splitlines()[-20:]))
             return (workdir, ret)
 
     # 2. Make plots if fit succeeds and is the central fit point
-    if is_central:
-        if args.use_helvetica == True or (args.use_helvetica == 'auto' and any(['Helvetica' in font for font in mpl.font_manager.findSystemFonts()])):
-            plt.style.use({"font.sans-serif": 'Helvetica'})
-
-        wp = re.findall('cards/(\w+)/', inputdir)[0]
-        ptmin, ptmax = list(map(int, re.findall('/pt(\d+)to(\d+)/', inputdir)[0]))
+    if is_central and getattr(args, 'test_n_fit', -1) == -1:
+        wp = re.findall(r'cards/(\w+)/', inputdir)[0]
+        ptmin, ptmax = list(map(int, re.findall(r'/pt(\d+)to(\d+)/', inputdir)[0]))
         plot_options = dict(
             plot_text=f'{args.tagger_label} ({wp})',
             plot_subtext='$p_T$: [{ptmin}, {ptmax}) GeV'.format(ptmin=ptmin, ptmax=ptmax if ptmax != 100000 else '+∞'),
@@ -660,4 +688,3 @@ def concurrent_fit_unit(arg):
             make_shape_unce_plots(inputdir, workdir, args, unce_type=unce_type, save_plots=True, **plot_options)
 
     return (workdir, 0)
-
