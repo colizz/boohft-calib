@@ -13,7 +13,11 @@ tagger:
   expr: (fj_1_globalParT3_TopbWev + fj_1_globalParT3_TopbWmv + fj_1_globalParT3_TopbWq + fj_1_globalParT3_TopbWqq + fj_1_globalParT3_TopbWtauhv) / (fj_1_globalParT3_TopbWev + fj_1_globalParT3_TopbWmv + fj_1_globalParT3_TopbWq + fj_1_globalParT3_TopbWqq + fj_1_globalParT3_TopbWtauhv + fj_1_globalParT3_QCD)
   span: [0.0, 1.0]
   wps:
-    dummy: [0.9, 1.0]
+    mistag5pct: [0.4421, 1.0]
+    mistag2p5pct: [0.6722, 1.0]
+    mistag1pct: [0.8586, 1.0]
+    mistag0p5pct: [0.9252, 1.0]
+    mistag0p1pct: [0.9804, 1.0]
 
 fit_pt_bins:
   - [300, 400]

@@ -14,7 +14,11 @@ tagger:
   expr: fj_1_particleNetWithMass_TvsQCD
   span: [0.0, 1.0]
   wps:
-    dummy: [0.9, 1.0]
+    mistag5pct: [0.08624, 1.0]
+    mistag2p5pct: [0.27, 1.0]
+    mistag1pct: [0.6382, 1.0]
+    mistag0p5pct: [0.834, 1.0]
+    mistag0p1pct: [0.9761, 1.0]
 
 fit_pt_bins:
   - [300, 400]

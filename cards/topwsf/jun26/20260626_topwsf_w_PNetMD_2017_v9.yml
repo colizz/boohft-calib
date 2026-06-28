@@ -13,9 +13,11 @@ tagger:
   expr: (fj_1_particleNetMD_Xcc + fj_1_particleNetMD_Xqq) / (fj_1_particleNetMD_Xcc + fj_1_particleNetMD_Xqq + fj_1_particleNetMD_QCD)
   span: [0.0, 1.0]
   wps:
-    mistag2p5pct: [0.579, 1.0]
-    mistag1pct: [0.810, 1.0]
-    mistag0p5pct: [0.891, 1.0]
+    mistag5pct: [0.8836, 1.0]
+    mistag2p5pct: [0.9328, 1.0]
+    mistag1pct: [0.9663, 1.0]
+    mistag0p5pct: [0.9796, 1.0]
+    mistag0p1pct: [0.993, 1.0]
 
 fit_pt_bins:
   - [200, 300]

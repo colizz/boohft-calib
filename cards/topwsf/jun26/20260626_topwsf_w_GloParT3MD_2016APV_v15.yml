@@ -13,7 +13,11 @@ tagger:
   expr: (fj_1_globalParT3_Xcs + (1.0 / 3.0) * fj_1_globalParT3_Xqq) / (fj_1_globalParT3_Xcs + (1.0 / 3.0) * fj_1_globalParT3_Xqq + fj_1_globalParT3_QCD)
   span: [0.0, 1.0]
   wps:
-    dummy: [0.9, 1.0]
+    mistag5pct: [0.5851, 1.0]
+    mistag2p5pct: [0.72, 1.0]
+    mistag1pct: [0.8396, 1.0]
+    mistag0p5pct: [0.8947, 1.0]
+    mistag0p1pct: [0.9582, 1.0]
 
 fit_pt_bins:
   - [200, 300]

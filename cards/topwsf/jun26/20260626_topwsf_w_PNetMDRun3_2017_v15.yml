@@ -13,7 +13,11 @@ tagger:
   expr: ((fj_1_particleNet_XccVsQCD) / (1 - fj_1_particleNet_XccVsQCD) + (fj_1_particleNet_XqqVsQCD) / (1 - fj_1_particleNet_XqqVsQCD)) / ((fj_1_particleNet_XccVsQCD) / (1 - fj_1_particleNet_XccVsQCD) + (fj_1_particleNet_XqqVsQCD) / (1 - fj_1_particleNet_XqqVsQCD) + 1)
   span: [0.0, 1.0]
   wps:
-    dummy: [0.9, 1.0]
+    mistag5pct: [0.726, 1.0]
+    mistag2p5pct: [0.8295, 1.0]
+    mistag1pct: [0.904, 1.0]
+    mistag0p5pct: [0.9363, 1.0]
+    mistag0p1pct: [0.9723, 1.0]
 
 fit_pt_bins:
   - [200, 300]

@@ -13,7 +13,11 @@ tagger:
   expr: (fj_1_particleNetLegacy_Xcc + fj_1_particleNetLegacy_Xqq) / (fj_1_particleNetLegacy_Xcc + fj_1_particleNetLegacy_Xqq + fj_1_particleNetLegacy_QCD)
   span: [0.0, 1.0]
   wps:
-    dummy: [0.9, 1.0]
+    mistag5pct: [0.896, 1.0]
+    mistag2p5pct: [0.9406, 1.0]
+    mistag1pct: [0.9705, 1.0]
+    mistag0p5pct: [0.9823, 1.0]
+    mistag0p1pct: [0.9938, 1.0]
 
 fit_pt_bins:
   - [200, 300]

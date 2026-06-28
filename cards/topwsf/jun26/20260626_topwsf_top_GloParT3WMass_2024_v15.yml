@@ -13,7 +13,11 @@ tagger:
   expr: fj_1_globalParT3_withMassTopvsQCD
   span: [0.0, 1.0]
   wps:
-    dummy: [0.9, 1.0]
+    mistag5pct: [0.04974, 1.0]
+    mistag2p5pct: [0.1722, 1.0]
+    mistag1pct: [0.5078, 1.0]
+    mistag0p5pct: [0.7573, 1.0]
+    mistag0p1pct: [0.9688, 1.0]
 
 fit_pt_bins:
   - [300, 400]
