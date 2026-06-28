@@ -1,0 +1,21 @@
+extends:
+  - ../base.yml
+  - ../common/samples_run2.yml
+
+routine_name: 20260626_topwsf_w_PNetMDRun3
+category: w
+year: 2017
+nano_version: v15
+
+tagger:
+  label: ParticleNet-MD (Run3) WvsQCD
+  type: w
+  expr: ((fj_1_particleNet_XccVsQCD) / (1 - fj_1_particleNet_XccVsQCD) + (fj_1_particleNet_XqqVsQCD) / (1 - fj_1_particleNet_XqqVsQCD)) / ((fj_1_particleNet_XccVsQCD) / (1 - fj_1_particleNet_XccVsQCD) + (fj_1_particleNet_XqqVsQCD) / (1 - fj_1_particleNet_XqqVsQCD) + 1)
+  span: [0.0, 1.0]
+  wps:
+    dummy: [0.9, 1.0]
+
+fit_pt_bins:
+  - [200, 300]
+  - [300, 400]
+  - [400, 800]

@@ -16,8 +16,8 @@ routine_name: topwsf_default  # routine name used for output/{routine_name}_{yea
 category: w  # calibration category. Supported keys are defined in fit.poi_categories
 year: 2018  # data-taking year
 nano_version: v9  # NanoAOD/NanoHRT production version used in output and web directory names
-sample_base: /home/pku/licq/hcc/new/samples/trees_sf/20260626_NanoCpp_ntuple_muon  # base input directory prefix; _{year}_{nano_version} is appended automatically
-sample_scan_wp: /home/pku/licq/hcc/new/samples/trees_sf/20260626_NanoCpp_ntuple_minimal  # only needed by scan_wp.py; not used by the main topwsf routine
+sample_base: /eos/cms/store/cmst3/group/vhcc/sfTuples/trees_sf/20260626_NanoCpp_ntuple_muon  # base input directory prefix; _{year}_{nano_version} is appended automatically
+sample_scan_wp: /eos/cms/store/cmst3/group/vhcc/sfTuples/trees_sf/20260626_NanoCpp_ntuple_minimal  # only needed by scan_wp.py; not used by the main topwsf routine
 
 # 1_template options
 apply_toppt_weight: true  # if true, apply topptWeight for MC samples when the branch is available
@@ -58,8 +58,8 @@ process_labels:
 ## Predefined values ##
 #######################
 
-lumi_dict: {"2015": 19.52, "2016": 16.81, "2017": 41.48, "2018": 59.83, "2022": 7.9804, "2022EE": 26.6717, "2023": 18.063, "2023BPix": 9.693, "2024": 108.96, "2025": 110.59}
-lumi_uncertainty: {"2015": 1.025, "2016APV": 1.025, "2016": 1.025, "2017": 1.025, "2018": 1.025, "2022": 1.025, "2022EE": 1.025, "2023": 1.025, "2023BPix": 1.025, "2024": 1.025, "2025": 1.025}
+lumi_dict: {"2015": 19.52, "2016APV": 19.52, "2016": 16.81, "2017": 41.48, "2018": 59.83, "2022": 7.9804, "2022EE": 26.6717, "2022Comb": 34.6521, "2023": 18.063, "2023BPix": 9.693, "2023Comb": 27.756, "2024": 108.96, "2025": 110.59}
+lumi_uncertainty: {"2015": 1.025, "2016APV": 1.025, "2016": 1.025, "2017": 1.025, "2018": 1.025, "2022": 1.025, "2022EE": 1.025, "2022Comb": 1.025, "2023": 1.025, "2023BPix": 1.025, "2023Comb": 1.025, "2024": 1.025, "2025": 1.025}
 
 top_process_groups: [ttbar-powheg, singletop, ttv]  # sample groups split into tp3/tp2/tp1 by generator matching
 enabled_sample_groups: [ttbar-powheg, singletop, diboson, ttv, w]  # MC sample groups enabled by default

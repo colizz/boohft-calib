@@ -1,0 +1,22 @@
+extends:
+  - ../base.yml
+  - ../common/samples_run2.yml
+
+routine_name: 20260626_topwsf_top_PNetWMass
+category: top
+year: 2016
+nano_version: v15
+
+tagger:
+  label: ParticleNet (w/mass) TopVsQCD
+  type: top
+  expr: fj_1_particleNetWithMass_TvsQCD
+  span: [0.0, 1.0]
+  wps:
+    dummy: [0.9, 1.0]
+
+fit_pt_bins:
+  - [300, 400]
+  - [400, 480]
+  - [480, 600]
+  - [600, 1200]

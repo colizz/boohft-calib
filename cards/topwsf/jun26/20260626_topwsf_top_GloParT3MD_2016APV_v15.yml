@@ -1,0 +1,22 @@
+extends:
+  - ../base.yml
+  - ../common/samples_run2.yml
+
+routine_name: 20260626_topwsf_top_GloParT3MD
+category: top
+year: 2016APV
+nano_version: v15
+
+tagger:
+  label: GloParT3-MD TopVsQCD
+  type: top
+  expr: (fj_1_globalParT3_TopbWev + fj_1_globalParT3_TopbWmv + fj_1_globalParT3_TopbWq + fj_1_globalParT3_TopbWqq + fj_1_globalParT3_TopbWtauhv) / (fj_1_globalParT3_TopbWev + fj_1_globalParT3_TopbWmv + fj_1_globalParT3_TopbWq + fj_1_globalParT3_TopbWqq + fj_1_globalParT3_TopbWtauhv + fj_1_globalParT3_QCD)
+  span: [0.0, 1.0]
+  wps:
+    dummy: [0.9, 1.0]
+
+fit_pt_bins:
+  - [300, 400]
+  - [400, 480]
+  - [480, 600]
+  - [600, 1200]

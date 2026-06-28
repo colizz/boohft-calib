@@ -1,14 +1,14 @@
 extends:
   - ../base.yml
-  - ../common/samples_v9.yml
+  - ../common/samples_run2.yml
 
-routine_name: 20260626_topwsf_top_PNet
+routine_name: 20260626_topwsf_top_PNetWMass
 category: top
 year: 2018
 nano_version: v9
 
 tagger:
-  label: ParticleNet TopVsQCD
+  label: ParticleNet (w/mass) TopVsQCD
   type: top
   expr: fj_1_particleNet_TvsQCD
   span: [0.0, 1.0]

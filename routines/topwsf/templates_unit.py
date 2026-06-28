@@ -22,8 +22,6 @@ from utils.web_maker import WebMaker
 from .common import (
     all_shape_variations,
     compute_xsec_weights,
-    dataset_key,
-    parse_dataset_key,
     pt_name,
     resolve_topwsf_fileset,
     variation_to_fit_name,
@@ -276,17 +274,18 @@ class TopWSFTemplatesCoffeaProcessor(processor.ProcessorABC):
             pass_sel = proc_sel & (tagger > wpmin) & (tagger <= wpmax)
             self._fill_validation(out, process_name, f"pass_{wp}", _as_numpy(mass[pass_sel]), _as_numpy(pt[pass_sel]), _as_numpy(tagger[pass_sel]), _as_numpy(eta[pass_sel]), _as_numpy(phi[pass_sel]), _as_numpy(weight[pass_sel]))
 
-    def _base_weight(self, events, sample):
+    def _base_weight(self, events, meta):
         """Build the nominal MC event weight from xsec, pileup, lumi, and top pT."""
         # xsecWeight is derived during preprocessing from Runs/genEventSumw and
         # the sample xsecs in the card, because these ntuples do not store it directly.
-        lumi = self.global_cfg.lumi_dict[str(self.global_cfg.year)]
-        weight = events["genWeight"] * self.xsec_weights[sample]["xsecWeight"] * events["puWeight"] * lumi
+        weight_key = meta.get("weight_key", meta["sample"])
+        lumi = float(meta.get("lumi", self.global_cfg.lumi_dict[str(self.global_cfg.year)]))
+        weight = events["genWeight"] * self.xsec_weights[weight_key]["xsecWeight"] * events["puWeight"] * lumi
         if getattr(self.global_cfg, "apply_toppt_weight", True) and "topptWeight" in events.fields:
             weight = weight * events["topptWeight"]
         return weight
 
-    def _lhe_weight(self, events, sample, index, nominal_index):
+    def _lhe_weight(self, events, meta, index, nominal_index):
         """Return normalized LHEScaleWeight ratios for a requested weight index."""
         # Some samples do not carry LHEScaleWeight; keep the template nominal
         # rather than dropping those events.
@@ -299,7 +298,8 @@ class TopWSFTemplatesCoffeaProcessor(processor.ProcessorABC):
             event_ratio = num / ak.where(abs(den) > 1e-20, den, 1.0)
         except Exception:
             return ak.ones_like(events["genWeight"])
-        sample_norm = self.xsec_weights.get(sample, {}).get("lheScaleNorm", {}).get(str(index), 1.0)
+        weight_key = meta.get("weight_key", meta["sample"])
+        sample_norm = self.xsec_weights.get(weight_key, {}).get("lheScaleNorm", {}).get(str(index), 1.0)
         return event_ratio * sample_norm
 
     def _process_selections(self, events, group):
@@ -320,8 +320,8 @@ class TopWSFTemplatesCoffeaProcessor(processor.ProcessorABC):
         """Process one coffea chunk and return filled histograms."""
         out = {key: value.copy() * 0 for key, value in self.accumulator.items()}
         dataset = events.metadata["dataset"]
-        sample, input_variation = parse_dataset_key(dataset)
         meta = self.file_metadata[dataset]
+        input_variation = meta["variation"]
         group = meta["group"]
         is_data = group == "data"
         self._fill_cutflow(out, dataset, "all", len(events))
@@ -365,7 +365,7 @@ class TopWSFTemplatesCoffeaProcessor(processor.ProcessorABC):
             process_selections = self._process_selections(events, group)
             input_fit_variation = variation_to_fit_name(input_variation)
             if input_fit_variation == "nominal":
-                base_weight = self._base_weight(events, sample)
+                base_weight = self._base_weight(events, meta)
                 weights_by_variation = {"nominal": base_weight}
                 mass_by_variation = {"nominal": mass_nom}
                 # Weight-only variations are derived from nominal ntuples.
@@ -376,13 +376,13 @@ class TopWSFTemplatesCoffeaProcessor(processor.ProcessorABC):
                     mass_by_variation["puDown"] = mass_nom
                 lhe_cfg = self.global_cfg.lhe_scale_weights
                 if "lhescalemuf" in self.global_cfg.systematics:
-                    weights_by_variation["lhescalemufUp"] = base_weight * self._lhe_weight(events, sample, lhe_cfg["muf_up"], lhe_cfg["nominal"])
-                    weights_by_variation["lhescalemufDown"] = base_weight * self._lhe_weight(events, sample, lhe_cfg["muf_down"], lhe_cfg["nominal"])
+                    weights_by_variation["lhescalemufUp"] = base_weight * self._lhe_weight(events, meta, lhe_cfg["muf_up"], lhe_cfg["nominal"])
+                    weights_by_variation["lhescalemufDown"] = base_weight * self._lhe_weight(events, meta, lhe_cfg["muf_down"], lhe_cfg["nominal"])
                     mass_by_variation["lhescalemufUp"] = mass_nom
                     mass_by_variation["lhescalemufDown"] = mass_nom
                 if "lhescalemur" in self.global_cfg.systematics:
-                    weights_by_variation["lhescalemurUp"] = base_weight * self._lhe_weight(events, sample, lhe_cfg["mur_up"], lhe_cfg["nominal"])
-                    weights_by_variation["lhescalemurDown"] = base_weight * self._lhe_weight(events, sample, lhe_cfg["mur_down"], lhe_cfg["nominal"])
+                    weights_by_variation["lhescalemurUp"] = base_weight * self._lhe_weight(events, meta, lhe_cfg["mur_up"], lhe_cfg["nominal"])
+                    weights_by_variation["lhescalemurDown"] = base_weight * self._lhe_weight(events, meta, lhe_cfg["mur_down"], lhe_cfg["nominal"])
                     mass_by_variation["lhescalemurUp"] = mass_nom
                     mass_by_variation["lhescalemurDown"] = mass_nom
                 # JMS/JMR are built from the nominal mass branch so that step 1
@@ -410,7 +410,7 @@ class TopWSFTemplatesCoffeaProcessor(processor.ProcessorABC):
                 # directories and are written under the corresponding fit name.
                 if input_fit_variation not in self.shape_variations:
                     return out
-                base_weight = self._base_weight(events, sample)
+                base_weight = self._base_weight(events, meta)
                 weights_by_variation = {input_fit_variation: base_weight}
                 mass_by_variation = {input_fit_variation: mass_nom}
 

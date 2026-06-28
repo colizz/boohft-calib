@@ -1,5 +1,6 @@
 data_samples: [SingleMuon]
 
+# Reference: Run 2 UL card: https://github.com/colizz/NanoHRT-tools/blob/dev/nanov15/run/samples_nanov15/xsec_2017.conf
 mc_sample_groups_and_xsecs:
   ttbar-powheg:
     TTToSemiLeptonic_TuneCP5_13TeV-powheg-pythia8: 365.34

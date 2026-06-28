@@ -1,0 +1,43 @@
+data_samples: [Muon0, Muon1]
+
+# Reference: https://github.com/colizz/NanoHRT-tools/blob/dev/nanov15/run/samples_nanov12/xsec_2022.conf
+mc_sample_groups_and_xsecs:
+  ttbar-powheg:
+    TTtoLNu2Q_TuneCP5_13p6TeV_powheg-pythia8: 404.537
+    TTto2L2Nu_TuneCP5_13p6TeV_powheg-pythia8: 96.978
+  singletop:
+    TBbartoLplusNuBbar-s-channel-4FS_TuneCP5_13p6TeV_amcatnlo-pythia8: 2.39
+    TbarBtoLminusNuB-s-channel-4FS_TuneCP5_13p6TeV_amcatnlo-pythia8: 1.5
+    TBbarQ_t-channel_4FS_TuneCP5_13p6TeV_powheg-madspin-pythia8: 145.0
+    TbarBQ_t-channel_4FS_TuneCP5_13p6TeV_powheg-madspin-pythia8: 87.2
+    TWminustoLNu2Q_TuneCP5_13p6TeV_powheg-pythia8: 19.25
+    TbarWplustoLNu2Q_TuneCP5_13p6TeV_powheg-pythia8: 19.25
+  diboson:
+    WWtoLNu2Q_TuneCP5_13p6TeV_powheg-pythia8: 48.94
+    WWto2L2Nu_TuneCP5_13p6TeV_powheg-pythia8: 11.79
+    WZtoLNu2Q_TuneCP5_13p6TeV_powheg-pythia8: 15.87
+    WZto2L2Q_TuneCP5_13p6TeV_powheg-pythia8: 7.568
+    WZto3LNu_TuneCP5_13p6TeV_powheg-pythia8: 4.924
+    ZZto2L2Nu_TuneCP5_13p6TeV_powheg-pythia8: 1.031
+    ZZto2L2Q_TuneCP5_13p6TeV_powheg-pythia8: 6.778
+    ZZto4L_TuneCP5_13p6TeV_powheg-pythia8: 1.39
+  ttv:
+    TTLNu-1Jets_TuneCP5_13p6TeV_amcatnloFXFX-pythia8: 0.2505
+    TTLL_MLL-4to50_TuneCP5_13p6TeV_amcatnlo-pythia8: 0.03949
+    TTLL_MLL-50_TuneCP5_13p6TeV_amcatnlo-pythia8: 0.08646
+    TTNuNu_TuneCP5_13p6TeV_amcatnlo-pythia8: 0.1638
+    TTZ-ZtoQQ-1Jets_TuneCP5_13p6TeV_amcatnloFXFX-pythia8: 0.6603
+  w:
+    WtoLNu-4Jets_1J_TuneCP5_13p6TeV_madgraphMLM-pythia8: 9084
+    WtoLNu-4Jets_2J_TuneCP5_13p6TeV_madgraphMLM-pythia8: 2925
+    WtoLNu-4Jets_3J_TuneCP5_13p6TeV_madgraphMLM-pythia8: 861.7
+    WtoLNu-4Jets_4J_TuneCP5_13p6TeV_madgraphMLM-pythia8: 416.5
+  qcd-mg:
+    QCD-4Jets_HT-200to400_TuneCP5_13p6TeV_madgraphMLM-pythia8: 1961000
+    QCD-4Jets_HT-400to600_TuneCP5_13p6TeV_madgraphMLM-pythia8: 95620
+    QCD-4Jets_HT-600to800_TuneCP5_13p6TeV_madgraphMLM-pythia8: 13540
+    QCD-4Jets_HT-800to1000_TuneCP5_13p6TeV_madgraphMLM-pythia8: 3033
+    QCD-4Jets_HT-1000to1200_TuneCP5_13p6TeV_madgraphMLM-pythia8: 883.7
+    QCD-4Jets_HT-1200to1500_TuneCP5_13p6TeV_madgraphMLM-pythia8: 383.5
+    QCD-4Jets_HT-1500to2000_TuneCP5_13p6TeV_madgraphMLM-pythia8: 125.2
+    QCD-4Jets_HT-2000_TuneCP5_13p6TeV_madgraphMLM-pythia8: 26.49

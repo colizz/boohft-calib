@@ -5,17 +5,15 @@ extends:
 routine_name: 20260626_topwsf_w_PNetMD
 category: w
 year: 2016
-nano_version: v9
+nano_version: v15
 
 tagger:
   label: ParticleNet-MD WvsQCD
   type: w
-  expr: (fj_1_particleNetMD_Xcc + fj_1_particleNetMD_Xqq) / (fj_1_particleNetMD_Xcc + fj_1_particleNetMD_Xqq + fj_1_particleNetMD_QCD)
+  expr: (fj_1_particleNetLegacy_Xcc + fj_1_particleNetLegacy_Xqq) / (fj_1_particleNetLegacy_Xcc + fj_1_particleNetLegacy_Xqq + fj_1_particleNetLegacy_QCD)
   span: [0.0, 1.0]
   wps:
-    mistag2p5pct: [0.642, 1.0]
-    mistag1pct: [0.842, 1.0]
-    mistag0p5pct: [0.907, 1.0]
+    dummy: [0.9, 1.0]
 
 fit_pt_bins:
   - [200, 300]

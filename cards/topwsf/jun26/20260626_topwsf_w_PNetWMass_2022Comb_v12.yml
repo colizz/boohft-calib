@@ -1,0 +1,22 @@
+extends:
+  - ../base.yml
+  - ../common/samples_run3early22.yml
+
+routine_name: 20260626_topwsf_w_PNetWMass
+category: w
+year: 2022Comb
+nano_version: v12
+systematics: [pu, jms, jmr, lhescalemuf, lhescalemur]
+
+tagger:
+  label: ParticleNet (w/mass) WvsQCD
+  type: w
+  expr: fj_1_particleNetWithMass_WvsQCD
+  span: [0.0, 1.0]
+  wps:
+    dummy: [0.9, 1.0]
+
+fit_pt_bins:
+  - [200, 300]
+  - [300, 400]
+  - [400, 800]

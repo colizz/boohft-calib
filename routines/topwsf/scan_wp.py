@@ -18,7 +18,7 @@ if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
 from launcher import load_global_cfg
-from routines.topwsf.common import dataset_key, mc_sample_group_map, parse_dataset_key, resolve_sample_base
+from routines.topwsf.common import dataset_key, mc_sample_group_map, resolve_sample_base, topwsf_year_components
 from utils.tools import eval_expr, expression_names
 
 
@@ -93,7 +93,7 @@ def _format_size(size):
 
 
 def _qcd_ht_sort_key(sample):
-    match = re.search(r"_HT(\d+)to(?:(\d+)|Inf)_", sample)
+    match = re.search(r"(?:_HT|HT-)(\d+)(?:to(?:(\d+)|Inf))?[_-]", sample)
     if match is None:
         return (float("inf"), sample)
     return (int(match.group(1)), sample)
@@ -106,62 +106,74 @@ def _scan_read_fraction(read_index):
 
 
 def _resolve_scan_qcd_fileset(cfg):
-    sample_base = resolve_sample_base(cfg, attr="sample_scan_wp")
-    nominal_dir = os.path.join(sample_base, "nominal")
+    eras = topwsf_year_components(cfg.year)
+    include_era_in_key = len(eras) > 1
     qcd_samples = mc_sample_group_map(cfg).get(QCD_SCAN_GROUP)
     if not qcd_samples:
         raise KeyError(f"Cannot find {QCD_SCAN_GROUP!r} in mc_sample_groups_and_xsecs")
 
     fileset = {}
     file_metadata = {}
-    read_index = 0
-    for index, sample in enumerate(sorted(qcd_samples, key=_qcd_ht_sort_key)):
-        path = os.path.join(nominal_dir, f"{sample}_nominal.root")
-        exists = os.path.isfile(path)
-        size_bytes = os.path.getsize(path) if exists else None
-        entries = _num_events(path) if exists else 0
-        read = exists and index >= QCD_SKIP_HT_BINS
-        read_fraction = _scan_read_fraction(read_index) if read else 0.0
-        read_index += int(read)
-        entry_stop = int(entries * read_fraction) if read_fraction < 1.0 else entries
-        key = dataset_key(sample, "nominal")
-        fileset[key] = [path]
-        file_metadata[key] = {
-            "sample": sample,
-            "variation": "nominal",
-            "group": QCD_SCAN_GROUP,
-            "path": path,
-            "xsec_pb": float(qcd_samples[sample]),
-            "exists": exists,
-            "size_bytes": size_bytes,
-            "entries": entries,
-            "read": read,
-            "read_fraction": read_fraction,
-            "entry_start": 0,
-            "entry_stop": entry_stop,
-        }
+    for era in eras:
+        if str(era) not in cfg.lumi_dict:
+            raise KeyError(f"Missing lumi_dict entry for topwsf scan input era {era}")
+        sample_base = resolve_sample_base(cfg, attr="sample_scan_wp", year=era)
+        nominal_dir = os.path.join(sample_base, "nominal")
+        read_index = 0
+        for index, sample in enumerate(sorted(qcd_samples, key=_qcd_ht_sort_key)):
+            path = os.path.join(nominal_dir, f"{sample}_nominal.root")
+            exists = os.path.isfile(path)
+            size_bytes = os.path.getsize(path) if exists else None
+            entries = _num_events(path) if exists else 0
+            read = exists and index >= QCD_SKIP_HT_BINS
+            read_fraction = _scan_read_fraction(read_index) if read else 0.0
+            read_index += int(read)
+            entry_stop = int(entries * read_fraction) if read_fraction < 1.0 else entries
+            key = dataset_key(sample, "nominal") if not include_era_in_key else f"{sample}__{era}__nominal"
+            weight_key = sample if not include_era_in_key else f"{sample}__{era}"
+            fileset[key] = [path]
+            file_metadata[key] = {
+                "sample": sample,
+                "era": era,
+                "logical_year": str(cfg.year),
+                "variation": "nominal",
+                "group": QCD_SCAN_GROUP,
+                "path": path,
+                "xsec_pb": float(qcd_samples[sample]),
+                "lumi": float(cfg.lumi_dict[str(era)]),
+                "weight_key": weight_key,
+                "exists": exists,
+                "size_bytes": size_bytes,
+                "entries": entries,
+                "read": read,
+                "read_fraction": read_fraction,
+                "entry_start": 0,
+                "entry_stop": entry_stop,
+            }
     return fileset, file_metadata
 
 
 def _print_qcd_input_info(cfg, file_metadata):
     print("QCD scan input files")
     print("-" * 110)
-    print(f"sample_scan_wp: {resolve_sample_base(cfg, attr='sample_scan_wp')}")
+    sample_bases = [resolve_sample_base(cfg, attr="sample_scan_wp", year=era) for era in topwsf_year_components(cfg.year)]
+    print(f"sample_scan_wp: {', '.join(sample_bases)}")
     print(f"Group: {QCD_SCAN_GROUP}")
     print(f"Drop first HT bins: {QCD_SKIP_HT_BINS}")
     read_fractions = ", ".join(f"{fraction:g}" for fraction in QCD_READ_FRACTIONS)
     print(f"Read fractions after drop: [{read_fractions}], later={QCD_DEFAULT_READ_FRACTION:g}")
     print()
     print(
-        f"{'sample':<65}  {'xsec [pb]':>12}  {'size':>10}  {'read':>5}  "
+        f"{'era':<9}  {'sample':<65}  {'xsec [pb]':>12}  {'size':>10}  {'read':>5}  "
         f"{'partition':>18}  path"
     )
-    for meta in sorted(file_metadata.values(), key=lambda item: _qcd_ht_sort_key(item["sample"])):
+    for meta in sorted(file_metadata.values(), key=lambda item: (str(item.get("era", "")), _qcd_ht_sort_key(item["sample"]))):
         if meta["exists"]:
             partition = f"{meta['entry_start']}:{meta['entry_stop']}/{meta['entries']} ({meta['read_fraction']:.3g})"
         else:
             partition = "missing"
         print(
+            f"{str(meta.get('era', '')):<9}  "
             f"{meta['sample']:<65}  "
             f"{meta['xsec_pb']:12.6g}  "
             f"{_format_size(meta['size_bytes']):>10}  "
@@ -210,12 +222,13 @@ def _selected_background(events, cfg, group, signal_process):
     return events, ak.values_astype(bkg_mask, bool)
 
 
-def _event_weight(events, cfg, sample, xsec_weights):
-    lumi = float(cfg.lumi_dict[str(cfg.year)])
+def _event_weight(events, cfg, meta, xsec_weights):
+    weight_key = meta.get("weight_key", meta["sample"])
+    lumi = float(meta.get("lumi", cfg.lumi_dict[str(cfg.year)]))
     weight = (
         events["genWeight"]
-        * float(xsec_weights[sample]["xsecWeight"])
-        * float(xsec_weights[sample].get("readScale", 1.0))
+        * float(xsec_weights[weight_key]["xsecWeight"])
+        * float(xsec_weights[weight_key].get("readScale", 1.0))
         * events["puWeight"]
         * lumi
     )
@@ -234,6 +247,8 @@ def _compute_one_scan_xsec_weight(meta):
     if read_fraction <= 0.0:
         raise ValueError(f"Invalid read_fraction={read_fraction} for {meta['path']}")
     return {
+        "sample": meta["sample"],
+        "era": meta.get("era"),
         "xsecWeight": float(meta["xsec_pb"]) * 1000.0 / sumw,
         "readScale": 1.0 / read_fraction,
     }
@@ -247,7 +262,6 @@ def _scan_one_file(path, meta, cfg, xsec_weights, signal_process, branches):
         raise KeyError(f"Missing branches in {path}: {', '.join(missing)}")
     read_branches = [branch for branch in branches if branch in available]
 
-    sample = meta["sample"]
     group = meta["group"]
     scores = []
     weights = []
@@ -264,7 +278,7 @@ def _scan_one_file(path, meta, cfg, xsec_weights, signal_process, branches):
         if len(events) == 0 or not ak.any(bkg_mask):
             continue
         tagger = eval_expr(cfg.tagger.expr, events)
-        weight = _event_weight(events, cfg, sample, xsec_weights)
+        weight = _event_weight(events, cfg, meta, xsec_weights)
         scores.append(_as_numpy(tagger[bkg_mask]).astype(float))
         weights.append(_as_numpy(weight[bkg_mask]).astype(float))
 
@@ -275,11 +289,12 @@ def _scan_one_file(path, meta, cfg, xsec_weights, signal_process, branches):
 
 def _scan_one_task(task):
     key, meta, cfg, signal_process, branches = task
-    sample, _ = parse_dataset_key(key)
-    print(f"start {sample}", flush=True)
-    xsec_weights = {sample: _compute_one_scan_xsec_weight(meta)}
+    label = key.rsplit("__", 1)[0]
+    print(f"start {label}", flush=True)
+    weight_key = meta.get("weight_key", meta["sample"])
+    xsec_weights = {weight_key: _compute_one_scan_xsec_weight(meta)}
     scores, weights = _scan_one_file(meta["path"], meta, cfg, xsec_weights, signal_process, branches)
-    return sample, scores, weights
+    return label, scores, weights
 
 
 def _weighted_survival_thresholds(scores, weights, targets):
@@ -370,8 +385,8 @@ def main():
 
     tasks = []
     for key in sorted(fileset):
-        _, variation = parse_dataset_key(key)
         meta = file_metadata[key]
+        variation = meta["variation"]
         if variation != "nominal" or not meta["read"]:
             continue
         tasks.append((key, meta, cfg, signal_process, branches))

@@ -82,22 +82,34 @@ def mc_sample_group_map(cfg):
     return getattr(cfg, "mc_sample_groups_and_xsecs", {})
 
 
-def resolve_sample_base(cfg, attr="sample_base", append_year_version=True):
+TOPWSF_YEAR_COMPONENTS = {
+    "2022Comb": ["2022", "2022EE"],
+    "2023Comb": ["2023", "2023BPix"],
+}
+
+
+def topwsf_year_components(year):
+    return TOPWSF_YEAR_COMPONENTS.get(str(year), [str(year)])
+
+
+def resolve_sample_base(cfg, attr="sample_base", append_year_version=True, year=None):
+    year = str(cfg.year if year is None else year)
     sample_base = getattr(cfg, attr)
     if sample_base is None:
         raise ValueError(f"Missing required topwsf config: {attr}")
-    sample_base = sample_base.replace("$YEAR", str(cfg.year)).replace("<year>", str(cfg.year))
+    sample_base = sample_base.replace("$YEAR", year).replace("<year>", year)
     nano_version = str(cfg.nano_version)
     sample_base = sample_base.replace("$NANO_VERSION", nano_version).replace("<nano_version>", nano_version)
     if append_year_version:
-        suffix = f"_{cfg.year}_{nano_version}"
+        suffix = f"_{year}_{nano_version}"
         if not os.path.basename(sample_base).endswith(suffix):
             sample_base += suffix
     return sample_base
 
 
 def resolve_topwsf_fileset(cfg):
-    sample_base = resolve_sample_base(cfg)
+    eras = topwsf_year_components(cfg.year)
+    include_era_in_key = len(eras) > 1
     mc_groups = mc_sample_group_map(cfg)
     enabled_groups = set(getattr(cfg, "enabled_sample_groups", mc_groups.keys()))
     sample_to_group = {}
@@ -119,33 +131,44 @@ def resolve_topwsf_fileset(cfg):
     file_metadata = {}
     missing = []
     found_nominal_samples = set()
-    for variation in sorted(variations):
-        vdir = os.path.join(sample_base, variation)
-        if not os.path.isdir(vdir):
-            missing.append(vdir)
-            continue
-        for path in sorted(os.path.join(vdir, f) for f in os.listdir(vdir) if f.endswith(".root")):
-            sample = clean_sample_name(path, variation)
-            if sample in data_samples and variation != "nominal":
+    for era in eras:
+        sample_base = resolve_sample_base(cfg, year=era)
+        if str(era) not in cfg.lumi_dict:
+            raise KeyError(f"Missing lumi_dict entry for topwsf input era {era}")
+        for variation in sorted(variations):
+            vdir = os.path.join(sample_base, variation)
+            if not os.path.isdir(vdir):
+                missing.append(vdir)
                 continue
-            if sample not in sample_to_group and sample not in data_samples:
-                continue
-            if variation == "nominal":
-                found_nominal_samples.add(sample)
-            key = dataset_key(sample, variation)
-            fileset[key] = [path]
-            file_metadata[key] = {
-                "sample": sample,
-                "variation": variation,
-                "group": "data" if sample in data_samples else sample_to_group[sample],
-                "path": path,
-            }
-            if sample in sample_to_xsec:
-                file_metadata[key]["xsec_pb"] = sample_to_xsec[sample]
+            for path in sorted(os.path.join(vdir, f) for f in os.listdir(vdir) if f.endswith(".root")):
+                sample = clean_sample_name(path, variation)
+                if sample in data_samples and variation != "nominal":
+                    continue
+                if sample not in sample_to_group and sample not in data_samples:
+                    continue
+                if variation == "nominal":
+                    found_nominal_samples.add((era, sample))
+                key = dataset_key(sample, variation) if not include_era_in_key else f"{sample}__{era}__{variation}"
+                weight_key = sample if not include_era_in_key else f"{sample}__{era}"
+                fileset[key] = [path]
+                file_metadata[key] = {
+                    "sample": sample,
+                    "era": era,
+                    "logical_year": str(cfg.year),
+                    "variation": variation,
+                    "group": "data" if sample in data_samples else sample_to_group[sample],
+                    "path": path,
+                    "lumi": float(cfg.lumi_dict[str(era)]),
+                    "weight_key": weight_key,
+                }
+                if sample in sample_to_xsec:
+                    file_metadata[key]["xsec_pb"] = sample_to_xsec[sample]
     if missing:
         raise FileNotFoundError("Missing topwsf variation directories: " + ", ".join(missing))
-    for sample in sorted(set(sample_to_group) - found_nominal_samples):
-        _logger.info(f"[topwsf]: skip configured MC sample with no nominal input file: {sample}")
+    for era in eras:
+        missing_samples = set(sample_to_group) - {sample for found_era, sample in found_nominal_samples if found_era == era}
+        for sample in sorted(missing_samples):
+            _logger.info(f"[topwsf]: skip configured MC sample with no nominal input file: {sample} ({era})")
     return fileset, file_metadata
 
 
@@ -174,37 +197,40 @@ def _lhe_scale_norms(lhe_scale_sumw, nominal_index):
 
 def compute_xsec_weights(cfg, file_metadata):
     out = {}
-    skipped_samples = set()
+    skipped_weight_keys = set()
     nominal_lhe_index = int(cfg.lhe_scale_weights["nominal"])
     for key, meta in sorted(file_metadata.items()):
         if meta["variation"] != "nominal" or meta["group"] == "data":
             continue
         sample = meta["sample"]
-        if sample in skipped_samples:
+        weight_key = meta.get("weight_key", sample)
+        if weight_key in out or weight_key in skipped_weight_keys:
             continue
         if "xsec_pb" not in meta:
             raise KeyError(f"Missing xsec for sample {sample}")
         with uproot.open(meta["path"], handler=MemmapSource) as f:
             if "Runs" not in f:
                 _logger.info(f"[topwsf]: skip MC sample without Runs tree: {sample} ({meta['path']})")
-                skipped_samples.add(sample)
+                skipped_weight_keys.add(weight_key)
                 continue
             runs = f["Runs"]
             if "genEventSumw" not in runs.keys():
                 _logger.info(f"[topwsf]: skip MC sample without Runs/genEventSumw: {sample} ({meta['path']})")
-                skipped_samples.add(sample)
+                skipped_weight_keys.add(weight_key)
                 continue
             sumw = float(np.sum(runs["genEventSumw"].array(library="np")))
             count = int(np.sum(runs["genEventCount"].array(library="np"))) if "genEventCount" in runs.keys() else -1
             lhe_scale_sumw = _sum_lhe_scale_sumw(runs)
         if abs(sumw) <= 1e-20:
             _logger.info(f"[topwsf]: skip MC sample with zero Runs/genEventSumw: {sample} ({meta['path']})")
-            skipped_samples.add(sample)
+            skipped_weight_keys.add(weight_key)
             continue
         lhe_scale_norm, lhe_scale_norm_available = _lhe_scale_norms(lhe_scale_sumw, nominal_lhe_index)
         xsec = float(meta["xsec_pb"])
-        out[sample] = {
+        out[weight_key] = {
             "group": meta["group"],
+            "sample": sample,
+            "era": meta.get("era", str(cfg.year)),
             "xsec_pb": xsec,
             "genEventSumw": sumw,
             "genEventCount": count,
@@ -213,8 +239,8 @@ def compute_xsec_weights(cfg, file_metadata):
             "lheScaleNorm": lhe_scale_norm,
             "lheScaleNormAvailable": lhe_scale_norm_available,
         }
-    if skipped_samples:
-        for key in [key for key, meta in file_metadata.items() if meta["sample"] in skipped_samples]:
+    if skipped_weight_keys:
+        for key in [key for key, meta in file_metadata.items() if meta.get("weight_key", meta["sample"]) in skipped_weight_keys]:
             del file_metadata[key]
     return out
 

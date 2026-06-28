@@ -1,6 +1,6 @@
 extends:
   - base.yml
-  - common/samples_v9.yml
+  - common/samples_run2.yml
 
 routine_name: example_topwsf_w_PNetMD
 category: w
