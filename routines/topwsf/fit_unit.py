@@ -18,7 +18,7 @@ import uproot
 from logger import _logger
 from routines.base import ProcessingUnit, StandaloneMultiThreadedUnit
 from utils.bh_tools import bh_to_uproot, fix_bh
-from utils.plotting import adjust_square_hist_layout, cms_label, plt_savefig_infinite
+from utils.plotting import cms_label, plt_savefig_infinite
 from utils.routine_naming import routine_output_name
 from utils.web_maker import WebMaker
 
@@ -76,6 +76,15 @@ def _shape_name(process_name, syst, direction):
     if syst in ("jms", "jmr"):
         return f"{process_name}_{process_name}{syst}{direction}"
     return f"{process_name}_{syst}{direction}"
+
+
+def _add_fit_point_labels(ax, tagger_label, wp, detail, extra=None):
+    """Add the common fit-point label block used by step-2 diagnostic plots."""
+    ax.text(0.03, 0.92, tagger_label, transform=ax.transAxes, fontweight="bold", fontsize=16)
+    ax.text(0.03, 0.86, f"WP: {wp}", transform=ax.transAxes, fontweight="bold", fontsize=16)
+    ax.text(0.03, 0.80, detail, transform=ax.transAxes, fontsize=16)
+    if extra:
+        ax.text(0.03, 0.74, extra, transform=ax.transAxes, fontweight="bold", fontsize=15)
 
 
 def _preview_datacard_content(inputdir, processes, systematics, lumi_unce, auto_mc_stats):
@@ -168,8 +177,7 @@ def _plot_shape_syst(inputdir, webdir, wp, pt_name_label, pt_text, syst, args):
         ax.set_ylim(0, max(np.max(nom), np.max(up), np.max(down), 1.0) * 1.4)
         ax.set_xticklabels([])
         ax.set_ylabel("MC events / bin")
-        ax.text(0.03, 0.92, f"{args.tagger_label} ({wp})", transform=ax.transAxes, fontweight="bold", fontsize=18)
-        ax.text(0.03, 0.86, f"{pt_text}, {region}, Syst: {syst}", transform=ax.transAxes, fontsize=16)
+        _add_fit_point_labels(ax, args.tagger_label, wp, f"{pt_text}, {region}, Syst: {syst}")
         ax.legend()
 
         axr = fig.add_subplot(gs[1])
@@ -188,7 +196,6 @@ def _plot_shape_syst(inputdir, webdir, wp, pt_name_label, pt_text, syst, args):
         axr.plot([edges[0], edges[-1]], [0.5, 0.5], color="black", linestyle=":", linewidth=1)
         axr.plot([edges[0], edges[-1]], [1.5, 1.5], color="black", linestyle=":", linewidth=1)
         fname = os.path.join(webdir, f"shape_{syst}_{wp}_{pt_name_label}_{region}")
-        adjust_square_hist_layout(fig)
         fig.savefig(fname + ".png")
         plt_savefig_infinite(fname + ".pdf")
         plt.close(fig)
@@ -231,9 +238,13 @@ def _plot_shape_syst_components(inputdir, webdir, wp, pt_name_label, pt_text, sy
         ax.set_ylim(0, ymax * 1.45)
         ax.set_xticklabels([])
         ax.set_ylabel("MC events / bin")
-        ax.text(0.03, 0.92, f"{args.tagger_label} ({wp})", transform=ax.transAxes, fontweight="bold", fontsize=18)
-        ax.text(0.03, 0.86, f"{pt_text}, {region}, Syst: {syst}", transform=ax.transAxes, fontsize=16)
-        ax.text(0.03, 0.80, "Processes: " + ", ".join(processes), transform=ax.transAxes, fontweight="bold", fontsize=15)
+        _add_fit_point_labels(
+            ax,
+            args.tagger_label,
+            wp,
+            f"{pt_text}, {region}, Syst: {syst}",
+            extra="Processes: " + ", ".join(processes),
+        )
         process_handles = [
             mpl.lines.Line2D([0], [0], color=colors.get(proc, "black"), lw=2, label=args.process_labels.get(proc, proc))
             for proc in processes
@@ -262,7 +273,6 @@ def _plot_shape_syst_components(inputdir, webdir, wp, pt_name_label, pt_text, sy
         axr.plot([edges[0], edges[-1]], [0.5, 0.5], color="black", linestyle=":", linewidth=1)
         axr.plot([edges[0], edges[-1]], [1.5, 1.5], color="black", linestyle=":", linewidth=1)
         fname = os.path.join(webdir, f"shapeproc_{syst}_{wp}_{pt_name_label}_{region}")
-        adjust_square_hist_layout(fig)
         fig.savefig(fname + ".png")
         plt_savefig_infinite(fname + ".pdf")
         plt.close(fig)
@@ -427,9 +437,8 @@ def _plot_fit_shapes(inputdir, workdir, args):
             ax.set_ylim(0, max(np.max(data), np.max(total), 1.0) * 1.8)
             ax.set_ylabel("Events / bin")
             ax.set_xticklabels([])
-            ax.text(0.03, 0.92, f"{args.tagger_label} ({args.wp})", transform=ax.transAxes, fontweight="bold", fontsize=18)
-            ax.text(0.03, 0.86, f"{args.pt_name}, {region}, {label}", transform=ax.transAxes, fontsize=16)
-            ax.legend()
+            _add_fit_point_labels(ax, args.tagger_label, args.wp, f"{args.pt_name}, {region}, {label}")
+            ax.legend(fontsize=19)
 
             axr = fig.add_subplot(gs[1])
             total_clip = np.maximum(total, 1e-20)
@@ -441,7 +450,6 @@ def _plot_fit_shapes(inputdir, workdir, args):
             axr.set_xlabel(args.xlabel)
             axr.set_ylabel("Data / MC")
             fname = f"stack_{label}_{region}.png"
-            adjust_square_hist_layout(fig)
             fig.savefig(os.path.join(workdir, fname))
             plt_savefig_infinite(os.path.join(workdir, fname.replace(".png", ".pdf")))
             plt.close(fig)
@@ -517,9 +525,8 @@ def _plot_mc_prepost_shapes(inputdir, workdir, args):
         ax.set_ylim(0.0, ymax * 1.55)
         ax.set_xticklabels([])
         ax.set_ylabel("MC events / bin")
-        ax.text(0.03, 0.92, f"{args.tagger_label} ({args.wp})", transform=ax.transAxes, fontweight="bold", fontsize=18)
-        ax.text(0.03, 0.86, f"{args.pt_name}, {region}, pre/post MC", transform=ax.transAxes, fontsize=16)
-        ax.legend(handles=handles, ncol=2, fontsize=11, loc="upper right")
+        _add_fit_point_labels(ax, args.tagger_label, args.wp, f"{args.pt_name}, {region}, pre/post MC")
+        ax.legend(handles=handles, ncol=2, fontsize=13, loc="upper right")
 
         axr = fig.add_subplot(gs[1])
         for proc in component_processes:
@@ -547,7 +554,6 @@ def _plot_mc_prepost_shapes(inputdir, workdir, args):
         axr.set_ylabel("Post / Pre")
         axr.plot([edges[0], edges[-1]], [1.0, 1.0], color="black", linewidth=1)
         fname = f"mc_prepost_{region}.png"
-        adjust_square_hist_layout(fig)
         fig.savefig(os.path.join(workdir, fname))
         plt_savefig_infinite(os.path.join(workdir, fname.replace(".png", ".pdf")))
         plt.close(fig)
@@ -556,23 +562,73 @@ def _plot_mc_prepost_shapes(inputdir, workdir, args):
 
 
 def _make_summary_plot(results, categories, outputdir, args):
-    labels = [f"{r['wp']}\n{r['pt_range'][0]}-{r['pt_range'][1]}" for r in results]
-    x = np.arange(len(labels))
+    def _pt_key(result):
+        lo, hi = result["pt_range"]
+        return float(lo), float(hi)
+
+    def _pt_label(pt_range):
+        lo, hi = pt_range
+        return f"({lo:g}, {hi:g})"
+
+    pt_ranges = sorted({_pt_key(r) for r in results})
+    wps = []
+    for result in results:
+        if result["wp"] not in wps:
+            wps.append(result["wp"])
+    x = np.arange(len(pt_ranges))
+    lookup = {(r["wp"], _pt_key(r)): r for r in results}
+    colors = [
+        "#5790fc",
+        "#f89c20",
+        "#e42536",
+        "#964a8b",
+        "#9c9ca1",
+        "#7a21dd",
+        "#1a9850",
+        "#d73027",
+        "#66c2a5",
+        "#e6ab02",
+    ]
+    markers = ["o", "s", "D", "^", "v", "P", "X", "*", "<", ">"]
+    offset_step = min(0.16, 0.8 / max(len(wps), 1))
+    offsets = (np.arange(len(wps)) - (len(wps) - 1) / 2.0) * offset_step
     for cat in categories:
-        centers = np.array([r["sf"][cat]["central"] for r in results])
-        errl = np.array([r["sf"][cat]["err_low"] for r in results])
-        errh = np.array([r["sf"][cat]["err_high"] for r in results])
-        fig, ax = plt.subplots(figsize=(20, 10))
+        fig, ax = plt.subplots(figsize=(12, 10))
         cms_label(ax, args.year, args.lumi)
-        ax.errorbar(x, centers, yerr=[-errl, errh], marker="o", linestyle="none", color="black")
+        for yl in np.arange(0.0, 2.4, 0.2):
+            ax.plot([-0.5, len(pt_ranges) - 0.5], [yl, yl], ":", color="lightgrey", zorder=0)
         ax.axhline(1.0, color="grey", linestyle=":")
+        for iwp, wp in enumerate(wps):
+            centers, errl, errh, xpos = [], [], [], []
+            for ipt, pt_range in enumerate(pt_ranges):
+                result = lookup.get((wp, pt_range))
+                if result is None:
+                    continue
+                sf = result["sf"][cat]
+                centers.append(sf["central"])
+                errl.append(sf["err_low"])
+                errh.append(sf["err_high"])
+                xpos.append(x[ipt] + offsets[iwp])
+            ax.errorbar(
+                xpos,
+                centers,
+                yerr=[-np.array(errl), np.array(errh)],
+                marker=markers[iwp % len(markers)],
+                markersize=8,
+                linestyle="none",
+                color=colors[iwp % len(colors)],
+                label=wp,
+            )
         ax.set_xticks(x)
-        ax.set_xticklabels(labels)
-        ax.set_xlim(x[0] - 0.5, x[-1] + 0.5)
+        ax.set_xticklabels([_pt_label(pt_range) for pt_range in pt_ranges])
+        ax.set_xlim(-0.5, len(pt_ranges) - 0.5)
         ax.set_ylim(0.0, 2.0)
-        ax.set_ylabel(f"SF ({cat})")
-        ax.text(0.03, 0.92, args.tagger_label, transform=ax.transAxes, fontweight="bold", fontsize=16, ha="left", va="top")
-        fig.subplots_adjust(left=0.14, right=0.96, bottom=0.18, top=0.84)
+        ax.set_xlabel(r"$p_{T}$(j) [GeV]", ha="right", x=1.0)
+        ax.set_ylabel(f"SF ({cat})", ha="right", y=1.0)
+        ax.tick_params(axis="both", which="minor", bottom=False, top=False)
+        ax.text(0.05, 0.92, args.tagger_label, transform=ax.transAxes, fontweight="bold", fontsize=24)
+        ax.legend(loc="lower left")
+        fig.subplots_adjust(left=0.12, right=0.96, bottom=0.12, top=0.86)
         fig.savefig(os.path.join(outputdir, f"sf_summary_{cat}.png"))
         plt_savefig_infinite(os.path.join(outputdir, f"sf_summary_{cat}.pdf"))
         plt.close(fig)
@@ -738,7 +794,7 @@ class TopWSFFitUnit(ProcessingUnit):
                 web.add_text()
         for cat in categories:
             web.add_h2(f"SF ({cat})")
-            web.add_figure(self.webdir, f"sf_summary_{cat}.png", f"SF summary {cat}", width=800, height=400)
+            web.add_figure(self.webdir, f"sf_summary_{cat}.png", f"SF summary {cat}", width=480, height=400)
             web.add_text()
             web.add_text("| WP / pT | central | uncertainty | status |")
             web.add_text("| :--- | :---: | :---: | :---: |")

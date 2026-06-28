@@ -14,7 +14,7 @@ import numpy as np
 
 from logger import _logger
 from routines.base import ProcessingUnit
-from utils.plotting import adjust_square_hist_layout, cms_label, make_generic_mc_data_plots
+from utils.plotting import cms_label, make_generic_mc_data_plots, plt_savefig_infinite
 from utils.routine_naming import routine_output_name
 from utils.tools import eval_expr, expression_names
 from utils.web_maker import WebMaker
@@ -572,11 +572,10 @@ class TopWSFTemplatesUnit(ProcessingUnit):
             transform=ax.transAxes,
             ha="left",
             va="top",
-            fontsize=18,
+            fontsize=19,
             fontweight="bold",
             bbox={"boxstyle": "round,pad=0.2", "facecolor": "white", "alpha": 0.75, "edgecolor": "none"},
         )
-        adjust_square_hist_layout(fig)
         fig.savefig(path)
         plt.close(fig)
 
@@ -602,7 +601,7 @@ class TopWSFTemplatesUnit(ProcessingUnit):
             return
         yerr_mc = np.sqrt(np.maximum(np.sum(variances_mc, axis=0), 0.0))
         yerr_data = np.sqrt(np.maximum(variances_data, 0.0))
-        make_generic_mc_data_plots(
+        fig = make_generic_mc_data_plots(
             edges,
             values_mc,
             yerr_mc,
@@ -618,8 +617,15 @@ class TopWSFTemplatesUnit(ProcessingUnit):
             plot_text=self.global_cfg.tagger.label,
             plot_subtext=title,
             plot_args=plot_args or {},
-            store_name=path[:-4] if path.endswith(".png") else path,
         )
+        legend = fig.axes[0].get_legend()
+        if legend is not None:
+            for text in legend.get_texts():
+                text.set_fontsize(19)
+        store_name = path[:-4] if path.endswith(".png") else path
+        fig.savefig(store_name + ".png")
+        plt_savefig_infinite(store_name + ".pdf")
+        plt.close(fig)
 
     def _plot_data_etaphi(self, path):
         """Draw the data-only eta-phi occupancy map."""
@@ -631,14 +637,13 @@ class TopWSFTemplatesUnit(ProcessingUnit):
             return
         eta_edges = _axis_edges(h.axes["eta"])
         phi_edges = _axis_edges(h.axes["phi"])
-        fig, ax = plt.subplots(figsize=(10, 10))
+        fig, ax = plt.subplots(figsize=(12, 10))
         mesh = ax.pcolormesh(eta_edges, phi_edges, values.T, shading="auto", cmap="viridis")
         fig.colorbar(mesh, ax=ax, label="Data events")
         ax.set_xlabel(r"$\eta$(j)")
         ax.set_ylabel(r"$\phi$(j)")
         cms_label(ax, str(self.global_cfg.year), self.global_cfg.lumi_dict[str(self.global_cfg.year)])
         ax.text(0.04, 0.95, r"Data jet $\eta$-$\phi$", transform=ax.transAxes, ha="left", va="top", fontsize=18, fontweight="bold", bbox={"boxstyle": "round,pad=0.2", "facecolor": "white", "alpha": 0.75, "edgecolor": "none"})
-        adjust_square_hist_layout(fig)
         fig.savefig(path)
         plt.close(fig)
 
@@ -777,7 +782,7 @@ class TopWSFTemplatesUnit(ProcessingUnit):
             web.add_text()
             self._add_validation_figures(web, selection_name)
         web.add_h3("Data eta-phi")
-        web.add_figure(self.webdir, "data_etaphi.png", "Data eta-phi", width=460, height=460)
+        web.add_figure(self.webdir, "data_etaphi.png", "Data eta-phi", width=552, height=460)
         web.add_text()
 
         web.add_h2("Nominal mass-pT templates")

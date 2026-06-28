@@ -37,12 +37,27 @@ def _sanitize_mplhep_label_positions(artists):
         artist.set_position((float(x), float(y)))
 
 
-def cms_label(ax, year, lumi):
-    artists = hep.cms.label("Preliminary", data=True, lumi=lumi, com=13, ax=ax, loc=0)
+def cms_label(ax, year, lumi, label_shift_x=0):
+    try:
+        lumi = f"{float(lumi):.2f}"
+    except (TypeError, ValueError):
+        pass
+    com = 13
+    try:
+        if int(str(year)[:4]) >= 2022:
+            com = 13.6
+    except (TypeError, ValueError):
+        pass
+    artists = hep.cms.label("Preliminary", data=True, lumi=lumi, com=com, ax=ax, loc=0)
     _sanitize_mplhep_label_positions(artists)
     for artist in artists:
         if artist is not None and hasattr(artist, 'get_text') and artist.get_text() == 'Preliminary':
             artist.set_va('bottom')
+        if artist is not None and hasattr(artist, 'get_position') and hasattr(artist, 'set_position') and label_shift_x:
+            text = artist.get_text() if hasattr(artist, 'get_text') else ''
+            if text in ('CMS', 'Preliminary'):
+                x, y = artist.get_position()
+                artist.set_position((x + label_shift_x, y))
 
 
 def adjust_square_hist_layout(fig, shift=0.03):
@@ -322,7 +337,6 @@ def make_generic_mc_data_plots(
     # store the plots on demand
     store_name = kwargs.get('store_name', None)
     if store_name:
-        adjust_square_hist_layout(f)
         plt.savefig(store_name + '.png')
         plt_savefig_infinite(store_name + '.pdf')
         plt.close()

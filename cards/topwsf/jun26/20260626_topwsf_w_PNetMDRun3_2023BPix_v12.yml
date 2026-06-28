@@ -1,6 +1,7 @@
 extends:
   - ../base.yml
   - ../common/samples_run3early23.yml
+  - ../common/custom_selection_run3.yml
 
 routine_name: 20260626_topwsf_w_PNetMDRun3
 category: w
