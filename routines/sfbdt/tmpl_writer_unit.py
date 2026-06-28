@@ -29,6 +29,7 @@ import os
 
 from routines.base import ProcessingUnit, StandaloneMultiThreadedUnit
 from utils.web_maker import WebMaker
+from utils.routine_naming import routine_output_name
 from utils.tools import lookup_pt_based_weight, parse_tagger_expr, eval_expr, expression_names
 from utils.plotting import make_generic_mc_data_plots
 from utils.bh_tools import bh_to_uproot, fix_bh, scale_bh
@@ -329,10 +330,11 @@ class TmplWriterUnit(ProcessingUnit):
         self.global_cfg = global_cfg
         self.job_name_step1 = job_name_step1
         self.job_name_step2 = job_name_step2
-        self.outputdir = os.path.join('output', self.global_cfg.routine_name + '_' + str(self.global_cfg.year), self.job_name)
-        self.outputdir_step1 = os.path.join('output', self.global_cfg.routine_name + '_' + str(self.global_cfg.year), self.job_name_step1)
-        self.outputdir_step2 = os.path.join('output', self.global_cfg.routine_name + '_' + str(self.global_cfg.year), self.job_name_step2)
-        self.webdir = os.path.join('web', self.global_cfg.routine_name + '_' + str(self.global_cfg.year), self.job_name)
+        job_base = routine_output_name(self.global_cfg)
+        self.outputdir = os.path.join('output', job_base, self.job_name)
+        self.outputdir_step1 = os.path.join('output', job_base, self.job_name_step1)
+        self.outputdir_step2 = os.path.join('output', job_base, self.job_name_step2)
+        self.webdir = os.path.join('web', job_base, self.job_name)
         if not os.path.exists(self.outputdir):
             os.makedirs(self.outputdir)
         if not os.path.exists(self.webdir):

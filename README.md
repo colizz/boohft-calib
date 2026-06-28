@@ -1,119 +1,123 @@
-# Tool for boosted heavy flavour jet tagger calibration
+# boohft-calib
 
-`boohft-calib` is a tool that serves for the data-MC calibration of the "boosted heavy flavour jet tagger" in CMS, based on the sfBDT coastline method.
-The tool runs under the Run 2 UL condition using NanoAODv9.
-It is designed for the calibration of any Xbb/Xcc type taggers composed of the branches in NanoAODv9. 
+`boohft-calib` is a CMS calibration framework for data-MC scale factors of
+boosted heavy-flavour jet taggers.
 
-Users should specify in a data card the tagger expression, pre-defined WPs, etc., and a signal ROOT tree for extraction of the necessary signal tagger shape.
-See details in the [example YAML card](cards/sfbdt/example_bb_PNetXbbVsQCD.yml) for calibrating the ParticleNet XbbVsQCD score.
+The previous generation of this package was designed around the sfBDT method
+for X->bb tagging calibration; see the
+[`release/v3` branch](https://github.com/colizz/boohft-calib/tree/release/v3).
+The current framework is being generalized to support multiple taggers,
+calibration phase spaces, and fitting strategies through routine-specific YAML
+cards.
 
-The introduction of the method can be found in the [BTV slides](https://indico.cern.ch/event/1120932/#23-calibration-of-ul20172018-x).
-Detailed documentation is provided in [AN-21-005](https://cms.cern.ch/iCMS/jsp/db_notes/noteInfo.jsp?cmsnoteid=CMS%20AN-2021/005) (the sfBDT method).
+## Routines
 
-The calibration results and all final & intermediate plots are showcased on the webpage, automatically generated after running a routine piloted by a YAML card.
-To see the example of the generated webpage, please refer to the above BTV slides.
+- [`sfbdt`](routines/sfbdt): calibration with the sfBDT method in a
+  heavy-flavour enriched QCD phase space. The method uses sfBDT-selected
+  g->bb/cc proxy jets to calibrate X->bb/cc jets. For the method details, see
+  the [BTV-22-001 paper](https://arxiv.org/abs/2510.10228) or
+  [AN-21-005](https://cms.cern.ch/iCMS/jsp/db_notes/noteInfo.jsp?cmsnoteid=CMS%20AN-2021/005)
+  (`sfBDT method`).
 
-## Run the tool
+- [`topwsf`](routines/topwsf): top/W tagger calibration in a semileptonic ttbar
+  phase space, using generator-matched top-merged and W-merged jets. The
+  workflow is a modern-framework rewrite of
+  [`ParticleNetSF`](https://github.com/cms-jet/ParticleNetSF); the processing and
+  fit logic follow the same strategy.
 
-1. Run on a local cluster
+- `zbb`: X->bb tagger calibration from the Z->bb peak in a QCD phase space,
+  with a dimuon Z->mumu phase space used to constrain the inclusive Z+jets
+  cross section. This routine is still <span style="color:red">under development</span>.
 
-First set up the LCG environment:
+## Framework Philosophy
+
+The main goal of `boohft-calib` is to make custom scale-factor derivation
+practical for analyzers while keeping the intermediate checks reviewable.
+
+Each routine is piloted by a YAML card. After the routine finishes, the
+calibration results, final plots, and intermediate diagnostic plots are
+collected into automatically generated webpages. This is useful for checking
+histograms, templates, fit quality, nuisance impacts, and yield bookkeeping,
+and it is particularly helpful when an analysis needs custom SFs that still
+require POG review.
+
+Since the v4 series, the framework no longer requires a local conda
+environment. The standard workflow runs directly from the CERN LCG stack, for
+example (on LXPLUS):
+
 ```bash
 source /cvmfs/sft.cern.ch/lcg/views/LCG_110/x86_64-el9-gcc15-opt/setup.sh
-
-# clone the repo if needed
-git clone https://github.com/colizz/boohft-calib.git && cd boohft-calib
 ```
 
-The tool is tested with the LCG_110 Python stack, which provides the required
-packages such as ROOT/PyROOT, uproot, coffea, awkward, hist/boost-histogram,
-mplhep, xgboost, scipy, numpy, matplotlib, and PyYAML. No local conda or
-miniconda environment is required.
+For the original sfBDT-driven webpage workflow and the early framework
+motivation, see this
+[this presentation slide](https://indico.cern.ch/event/1120932/contributions/4706547/attachments/2384057/4074342/22.02.03_BTV_Calibration%20of%20UL2017_2018%20Xbb_cc%20taggers%20with%20sfBDT%20coastline%20method.pdf#page=20)
+from the first public release.
 
-Run the sfBDT routine in one command, e.g.,
-```bash
-python launcher.py cards/sfbdt/example_bb_PNetXbbVsQCD.yml --routine sfbdt --workers 10 10 10 70
-```
+## Running
 
-`sfbdt` is currently the default routine, so `--routine sfbdt` may be omitted.
-The four-step routine can also be run one step at a time:
-```bash
-python launcher.py cards/sfbdt/example_bb_PNetXbbVsQCD.yml --routine sfbdt --workers 10 10 10 70 -s 1000
-python launcher.py cards/sfbdt/example_bb_PNetXbbVsQCD.yml --routine sfbdt --workers 10 10 10 70 -s 0100
-python launcher.py cards/sfbdt/example_bb_PNetXbbVsQCD.yml --routine sfbdt --workers 10 10 10 70 -s 0010
-python launcher.py cards/sfbdt/example_bb_PNetXbbVsQCD.yml --routine sfbdt --workers 10 10 10 70 -s 0001
-```
+Routine-specific instructions are documented in:
 
-The example routine has been validated under LCG_110 for steps 1-3 with the
-commands above. Step 4 depends on the fit workflow and is not included in this
-LCG_110 validation note.
+- [`routines/sfbdt`](routines/sfbdt)
+- [`routines/topwsf`](routines/topwsf)
 
-Try `python launcher.py --help` for more information on the command arguments.
+Try `python launcher.py --help` for the common launcher options.
 
-Note: the tool uses 5 concurrent workers by default. On lxplus it will run by estimation 4 hrs for an entire routine. Specify more workers if you have more CPU resource.
+## Update Notes
 
-2. Run on SWAN
+v4.0 June 28, 2026
+- Major refactor from an sfBDT-only package into a multi-routine calibration
+  framework.
+- Add the `topwsf` routine for top/W tagger calibration.
+- Move routine-specific documentation and cards into routine-oriented
+  workflows.
+- Use the LCG software stack as the default runtime environment.
 
-[![Open in SWAN](https://swanserver.web.cern.ch/swanserver/images/badge_swan_white_150.png)](https://cern.ch/swanserver/cgi-bin/go?projurl=https://github.com/colizz/boohft-calib.git)
-
-Each routine will run by estimation 8 hrs on SWAN.
-
-To run on SWAN, click the link, start a SWAN session with the LCG_110 Python stack
-or source the same LCG view in the notebook, then open the `launcher_swan.ipynb`
-notebook and run all the blocks. This will launch a routine configured by the
-example card.
-
-## Configuration card
-
-The configuration card (e.g., the example card `cards/sfbdt/example_bb_PNetXbbVsQCD.yml`) defines everything for a routine. As a brief summary, users should specify
- - the type of calibration: can be `bb`, `cc`, or `qq`;
- - the year of UL condition: can be `2016APV`, `2016`, `2017`, or `2018`;
- - jet pT ranges for deriving separate SFs;
- - the tagger information, including the tagger name/expression, the span, and the custom WPs defined in the user's analysis;
- - info of a signal ROOT tree taken from the user's analysis which the tool uses for extracting the signal tagger shape.
-
-See detailed explanation in the example card [`cards/sfbdt/example_bb_PNetXbbVsQCD.yml`](cards/sfbdt/example_bb_PNetXbbVsQCD.yml).
-
---------
-## Update notes
+### Early Updates for v3
 
 v3.1.3 November 8, 2024
- - Feature: allow setting an individual fit range for the main POI
- - Feature: allow customisation of sfBDT input variables
- - Update: adapt code compatibility to the EL9 system.
- - Update: reduce the default numbers of parallel workers from 8 to 5 to prevent warnings on lxplus.
+- Feature: allow setting an individual fit range for the main POI.
+- Feature: allow customisation of sfBDT input variables.
+- Update: adapt code compatibility to the EL9 system.
+- Update: reduce the default numbers of parallel workers from 8 to 5 to prevent
+  warnings on lxplus.
 
 v3.1.2 July 21, 2023
- - Update: fix lumi uncertainty
- - Update: apply no JERC correction to SV mass
+- Update: fix lumi uncertainty.
+- Update: apply no JERC correction to SV mass.
 
 v3.1.1 May 25, 2023
- - Update: change the 20% frac_b/c/light variation in an overall manner (sync with mu-tagged method)
- - Update: in case of a fit failure, enlarge the autoMCStats threshold and retry
- - Feature: more text on plots to make it readable
+- Update: change the 20% frac_b/c/light variation in an overall manner, synced
+  with the mu-tagged method.
+- Update: in case of a fit failure, enlarge the autoMCStats threshold and
+  retry.
+- Feature: more text on plots to improve readability.
 
 v3.1.0 December 2, 2022
- - Feature: add new uncertainties sources
- - Feature: allow breaking down the full uncertainty list
+- Feature: add new uncertainty sources.
+- Feature: allow breaking down the full uncertainty list.
 
 v3.0.5 November 25, 2022
- - Feature: allow using custom sfBDT models to replace the defalt one
+- Feature: allow using custom sfBDT models to replace the default one.
 
 v3.0.4 April 19, 2022
- - Feature improved: allow expression to parse awkward-array indexing
- - Reweight binning bug fix
+- Feature improved: allow expression parsing with awkward-array indexing.
+- Reweight binning bug fix.
 
-v3.0.3 Mar 31, 2022
- - Implement the qq calibration type
+v3.0.3 March 31, 2022
+- Implement the qq calibration type.
 
-v3.0.2 Feb 5, 2022
- - Implement the year condition for 2016APV and 2016
+v3.0.2 February 5, 2022
+- Implement the year condition for 2016APV and 2016.
 
-v3.0.1 Jan 29, 2022
- - Support more command line arguments
+v3.0.1 January 29, 2022
+- Support more command-line arguments.
 
-v3.0.0 Jan 24, 2022
- - Update the method to sfBDT coastline
- - Update the framework to coffea (supports local run at present)
+v3.0.0 January 24, 2022
+- Update the method to sfBDT coastline.
+- Update the framework to coffea.
 
-Previous version (till v2.1) developed in [`ParticleNet-CCTagCalib`](https://github.com/colizz/ParticleNet-CCTagCalib/)
+### Early Updates for v2
+
+Previous versions through v2.1 were developed in
+[`ParticleNet-CCTagCalib`](https://github.com/colizz/ParticleNet-CCTagCalib/).

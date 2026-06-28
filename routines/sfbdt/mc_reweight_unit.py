@@ -21,6 +21,7 @@ import json
 import os
 
 from routines.base import ProcessingUnit
+from utils.routine_naming import routine_output_name
 from utils.web_maker import WebMaker
 from utils.tools import eval_expr, expression_names
 from utils.plotting import cms_label
@@ -193,8 +194,9 @@ class MCReweightUnit(ProcessingUnit):
             **kwargs,
         )
         self.global_cfg = global_cfg
-        self.outputdir = os.path.join('output', self.global_cfg.routine_name + '_' + str(self.global_cfg.year), self.job_name)
-        self.webdir = os.path.join('web', self.global_cfg.routine_name + '_' + str(self.global_cfg.year), self.job_name)
+        job_base = routine_output_name(self.global_cfg)
+        self.outputdir = os.path.join('output', job_base, self.job_name)
+        self.webdir = os.path.join('web', job_base, self.job_name)
         if not os.path.exists(self.outputdir):
             os.makedirs(self.outputdir)
         if not os.path.exists(self.webdir):

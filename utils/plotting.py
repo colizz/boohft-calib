@@ -44,6 +44,12 @@ def cms_label(ax, year, lumi):
         if artist is not None and hasattr(artist, 'get_text') and artist.get_text() == 'Preliminary':
             artist.set_va('bottom')
 
+
+def adjust_square_hist_layout(fig, shift=0.03):
+    """Tighten square histogram plots symmetrically in x, keeping y margins untouched."""
+    fig.subplots_adjust(left=0.125 + shift, right=0.9 - shift)
+
+
 def plt_savefig_infinite(filename):
     import time
     import random
@@ -82,7 +88,7 @@ def make_stacked_plots(inputdir, workdir, args, plot_unce=True, save_plots=True,
     for rootdir, title in zip(['shapes_prefit', 'shapes_fit_s'], ['prefit', 'postfit']):
         for b in ['pass', 'fail']:
             set_sns_color(args.color_order)
-            f = plt.figure(figsize=(12, 12))
+            f = plt.figure(figsize=(10, 10))
             gs = mpl.gridspec.GridSpec(2, 1, height_ratios=[3, 1], hspace=0.05) 
             
             ## Upper histogram panel
@@ -153,7 +159,7 @@ def make_prepostfit_plots(inputdir, workdir, args, save_plots=True, **kwargs):
     # All information read from fitDiagnosticsTest.root
     fit = uproot_open(f'{workdir}/fitDiagnosticsTest.root')
     for b in ['pass', 'fail']:
-        f, ax = plt.subplots(figsize=(12, 12))
+        f, ax = plt.subplots(figsize=(10, 10))
         cms_label(ax, args.year, args.lumi)
         # fill in data
         data, data_errh, data_errl = fit[f'shapes_prefit/{b}/data'].values(1), fit[f'shapes_prefit/{b}/data'].errors('high')[1], fit[f'shapes_prefit/{b}/data'].errors('low')[1]
@@ -218,7 +224,7 @@ def make_shape_unce_plots(inputdir, workdir, args, unce_type=None, save_plots=Tr
             for icat, cat in enumerate(args.cat_order[::-1]):
                 content_up[icat] *= content[icat].sum() / content_up[icat].sum()
                 content_down[icat] *= content[icat].sum() / content_down[icat].sum()
-        f, ax = plt.subplots(figsize=(12, 12))
+        f, ax = plt.subplots(figsize=(10, 10))
         cms_label(ax, args.year, args.lumi)
         for icat, (cat, color) in enumerate(zip(args.cat_order[::-1], ['blue', 'red', 'green'])):
             hep.histplot(content[icat], yerr=yerror[icat], bins=edges, label=f'MC ({cat})', color=color)
@@ -269,7 +275,7 @@ def make_generic_mc_data_plots(
 
     set_sns_color(colors_mc)
 
-    f = plt.figure(figsize=(12, 12))
+    f = plt.figure(figsize=(10, 10))
     gs = mpl.gridspec.GridSpec(2, 1, height_ratios=[3, 1], hspace=0.05) 
 
     ## Upper histogram panel
@@ -316,6 +322,7 @@ def make_generic_mc_data_plots(
     # store the plots on demand
     store_name = kwargs.get('store_name', None)
     if store_name:
+        adjust_square_hist_layout(f)
         plt.savefig(store_name + '.png')
         plt_savefig_infinite(store_name + '.pdf')
         plt.close()

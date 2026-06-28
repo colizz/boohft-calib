@@ -41,13 +41,8 @@ else
     needs_build=1
 fi
 
-if ! cmp -s "$SCRIPT_DIR/data/TagAndProbeExtendedV2.py" HiggsAnalysis/CombinedLimit/python/TagAndProbeExtendedV2.py ; then
-    cp "$SCRIPT_DIR/data/TagAndProbeExtendedV2.py" HiggsAnalysis/CombinedLimit/python/
-    needs_build=1
-fi
-
-if ! cmp -s "$SCRIPT_DIR/data/plot1DScanWithOutput.py" CombineHarvester/CombineTools/scripts/plot1DScanWithOutput.py ; then
-    cp "$SCRIPT_DIR/data/plot1DScanWithOutput.py" CombineHarvester/CombineTools/scripts/
+if ! cmp -s "$SCRIPT_DIR/data/TagAndProbeExtended.py" HiggsAnalysis/CombinedLimit/python/TagAndProbeExtended.py ; then
+    cp "$SCRIPT_DIR/data/TagAndProbeExtended.py" HiggsAnalysis/CombinedLimit/python/
     needs_build=1
 fi
 

@@ -11,6 +11,7 @@ version: v3.1.3
 workers: [5, 5, 5, 5]  # number of concurrent workers for the coffea and standalone processor
 run_step: 1111  # four bool digits to control whether or not to run each of the four steps
 skip_coffea: false  # if true, skip running the coffea step and directly load the existing results (should guarantee that the coffea step has run before)
+nano_version: v9  # NanoAOD/NanoHRT production version used in output and web directory names
 
 custom_selection: null  # customized event selection, if specified. ('fj_x' is a placeholder of 'fj_1' and 'fj_2')
 custom_sfbdt_path: null  # advanced usage: customized sfBDT model to replace the default one

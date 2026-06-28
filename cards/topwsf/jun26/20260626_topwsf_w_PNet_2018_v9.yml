@@ -1,0 +1,23 @@
+extends:
+  - ../base.yml
+  - ../common/samples_v9.yml
+
+routine_name: 20260626_topwsf_w_PNet
+category: w
+year: 2018
+nano_version: v9
+
+tagger:
+  label: ParticleNet WvsQCD
+  type: w
+  expr: fj_1_particleNet_WvsQCD
+  span: [0.0, 1.0]
+  wps:
+    mistag5pct: [0.70, 1.0]
+    mistag1pct: [0.94, 1.0]
+    mistag0p5pct: [0.98, 1.0]
+
+fit_pt_bins:
+  - [200, 300]
+  - [300, 400]
+  - [400, 800]

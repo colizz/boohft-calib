@@ -81,6 +81,24 @@ class WebMaker(object):
     /* Edit your header styles here */
     header { font-family: sans-serif; font-size: 20px; text-align: center; position: fixed; width: 100%; line-height: 42px; top: 0; left: 0; background-color: #424242; color: white; }
     body { box-sizing: border-box; min-width: 200px; max-width: 2000px; margin: 56px auto 0 auto; padding: 45px; }
+    .year-buttons { font-family: sans-serif; margin: 0 0 18px 0; }
+    .year-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 7px; align-items: center; }
+    .year-group { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-right: 12px; }
+    .year-buttons button {
+        border: 1px solid rgba(0,0,0,0.12);
+        border-radius: 5px;
+        padding: 5px 9px;
+        font-size: 13px;
+        cursor: pointer;
+        color: #1f2933;
+    }
+    .year-buttons button:hover { filter: brightness(0.95); }
+    .era-run2 { background: #d8ecff; }
+    .era-run3a { background: #ddf4df; }
+    .era-run3b { background: #fff0c2; }
+    .era-run2.dark { background: #9ecbef; }
+    .era-run3a.dark { background: #a9d8ad; }
+    .era-run3b.dark { background: #e0c56e; }
     @media (max-width: 767px) {
         header { font-size: 15px; }
         body { padding: 15px; }
@@ -88,13 +106,48 @@ class WebMaker(object):
     </style>
 </head>
 <body>
-<button onclick="replaceYear('2016APV')">2016APV</button>
-<button onclick="replaceYear('2016')">2016</button>
-<button onclick="replaceYear('2017')">2017</button>
-<button onclick="replaceYear('2018')">2018</button>
+<div class="year-buttons">
+<div class="year-row">
+<span class="year-group">
+<button class="era-run2" onclick="replaceYear('2016APV_v9')">2016APV_v9</button>
+<button class="era-run2" onclick="replaceYear('2016_v9')">2016_v9</button>
+<button class="era-run2" onclick="replaceYear('2017_v9')">2017_v9</button>
+<button class="era-run2" onclick="replaceYear('2018_v9')">2018_v9</button>
+</span>
+<span class="year-group">
+<button class="era-run3a" onclick="replaceYear('2022_v12')">2022_v12</button>
+<button class="era-run3a" onclick="replaceYear('2022EE_v12')">2022EE_v12</button>
+<button class="era-run3a" onclick="replaceYear('2023_v12')">2023_v12</button>
+<button class="era-run3a" onclick="replaceYear('2023BPix_v12')">2023BPix_v12</button>
+<button class="era-run3a" onclick="replaceYear('2022Comb_v12')">2022Comb_v12</button>
+<button class="era-run3a" onclick="replaceYear('2023Comb_v12')">2023Comb_v12</button>
+</span>
+</div>
+<div class="year-row">
+<span class="year-group">
+<button class="era-run2 dark" onclick="replaceYear('2016APV_v15')">2016APV_v15</button>
+<button class="era-run2 dark" onclick="replaceYear('2016_v15')">2016_v15</button>
+<button class="era-run2 dark" onclick="replaceYear('2017_v15')">2017_v15</button>
+<button class="era-run2 dark" onclick="replaceYear('2018_v15')">2018_v15</button>
+</span>
+<span class="year-group">
+<button class="era-run3a dark" onclick="replaceYear('2022_v15')">2022_v15</button>
+<button class="era-run3a dark" onclick="replaceYear('2022EE_v15')">2022EE_v15</button>
+<button class="era-run3a dark" onclick="replaceYear('2023_v15')">2023_v15</button>
+<button class="era-run3a dark" onclick="replaceYear('2023BPix_v15')">2023BPix_v15</button>
+<button class="era-run3a dark" onclick="replaceYear('2022Comb_v15')">2022Comb_v15</button>
+<button class="era-run3a dark" onclick="replaceYear('2023Comb_v15')">2023Comb_v15</button>
+</span>
+<span class="year-group">
+<button class="era-run3b dark" onclick="replaceYear('2024_v15')">2024_v15</button>
+<button class="era-run3b dark" onclick="replaceYear('2025_v15')">2025_v15</button>
+</span>
+</div>
+</div>
 <script>
 function replaceYear(y) {
-    location.href=location.href.replace(new RegExp('(2016APV|2016|2017|2018)'), y);
+    const pat = '(2016APV|2016|2017|2018|2022EE|2022Comb|2022|2023BPix|2023Comb|2023|2024|2025)(?:_v[0-9]+)?';
+    location.href=location.href.replace(new RegExp(pat), y);
 }
 </script>
 

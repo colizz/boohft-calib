@@ -26,6 +26,7 @@ import re
 
 from routines.base import ProcessingUnit, StandaloneMultiThreadedUnit
 from utils.web_maker import WebMaker
+from utils.routine_naming import routine_output_name
 from utils.plotting import make_shape_unce_plots, make_prepostfit_plots, make_stacked_plots, make_sfbdt_variation_plot, make_fit_summary_plots
 from logger import _logger
 
@@ -61,11 +62,12 @@ class FitUnit(ProcessingUnit):
         self.job_name_step1 = job_name_step1
         self.job_name_step2 = job_name_step2
         self.job_name_step3 = job_name_step3
-        self.outputdir = os.path.join('output', self.global_cfg.routine_name + '_' + str(self.global_cfg.year), self.job_name)
-        self.outputdir_step1 = os.path.join('output', self.global_cfg.routine_name + '_' + str(self.global_cfg.year), self.job_name_step1)
-        self.outputdir_step2 = os.path.join('output', self.global_cfg.routine_name + '_' + str(self.global_cfg.year), self.job_name_step2)
-        self.outputdir_step3 = os.path.join('output', self.global_cfg.routine_name + '_' + str(self.global_cfg.year), self.job_name_step3)
-        self.webdir = os.path.join('web', self.global_cfg.routine_name + '_' + str(self.global_cfg.year), self.job_name)
+        job_base = routine_output_name(self.global_cfg)
+        self.outputdir = os.path.join('output', job_base, self.job_name)
+        self.outputdir_step1 = os.path.join('output', job_base, self.job_name_step1)
+        self.outputdir_step2 = os.path.join('output', job_base, self.job_name_step2)
+        self.outputdir_step3 = os.path.join('output', job_base, self.job_name_step3)
+        self.webdir = os.path.join('web', job_base, self.job_name)
         if not os.path.exists(self.outputdir):
             os.makedirs(self.outputdir)
         if not os.path.exists(self.webdir):
@@ -108,12 +110,16 @@ class FitUnit(ProcessingUnit):
 
         _logger.info("[Postprocess]: Launch the fit in the threaded workflow.")
 
+        if self.global_cfg.skip_fit:
+            _logger.info("[Postprocess]: skip_fit is true; skip CMSSW setup and fit-point plotting.")
+            return
+
         # 1. Setup CMSSW environment
         _logger.info("[Postprocess]: Set up the CMSSW environment...")
-        out, ret = runcmd(f"bash {CMSSW_WRAPPER} {CMSSW_ENV_SETUP}")
+        out, ret = runcmd(f"bash {CMSSW_ENV_SETUP}")
         if ret != 0:
             _logger.exception("Error running cmssw setup:\n\n" + out)
-            raise
+            raise RuntimeError("CMSSW setup failed")
         
         # 2. Launch the fit then make plots
         fit_handler = StandaloneMultiThreadedUnit(workers=self.workers, use_unordered_mapping=True)
@@ -181,25 +187,6 @@ class FitUnit(ProcessingUnit):
         """
 
         _logger.info('[Make webpage]: Collecting all derived SF results and plots in one webpage.')
-        if self.global_cfg.test_n_fit != -1:
-            web = WebMaker(self.job_name)
-            web.add_h1('Step 4 test fit summary')
-            web.add_text(f'`test_n_fit = {self.global_cfg.test_n_fit}`: only completed fit points are summarized.')
-            fit_logs = sorted(glob.glob(os.path.join(self.outputdir, '*', '*', '*', '*', 'fit.log')))
-            if len(fit_logs) == 0:
-                web.add_text('No `fit.log` files were produced.')
-            for fit_log in fit_logs:
-                web.add_h2(os.path.relpath(os.path.dirname(fit_log), self.outputdir))
-                sf_lines = []
-                with open(fit_log) as f:
-                    for line in f:
-                        cols = line.split()
-                        if len(cols) > 0 and cols[0].startswith('SF_flv'):
-                            sf_lines.append(line.rstrip())
-                web.add_text('```text\n' + ('\n'.join(sf_lines) if sf_lines else 'No SF lines found.') + '\n```')
-            web.write_to_file(self.webdir)
-            return
-
         pt_edges = self.global_cfg.pt_edges + [100000]
         pt_edge_pairs = [(ptmin, ptmax) for ptmin, ptmax in zip(pt_edges[:-1], pt_edges[1:])]
         pt_list = [f'pt{ptmin}to{ptmax}' for ptmin, ptmax in zip(pt_edges[:-1], pt_edges[1:])]

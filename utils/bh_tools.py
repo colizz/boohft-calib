@@ -1,10 +1,31 @@
 import boost_histogram as bh
+import numpy as np
+from uproot.writing import identify
 
 def bh_to_uproot(histogram: bh.Histogram):
     r"""Return a boost histogram object that uproot5 can write as TH1.
     """
 
-    return histogram
+    axis = histogram.axes[0]
+    edges = np.asarray([axis.value(i) for i in range(axis.size + 1)], dtype=float)
+    values = np.asarray(histogram.values(flow=False), dtype=float)
+    variances = np.asarray(histogram.variances(flow=False), dtype=float)
+    data = np.concatenate([[0.0], values, [0.0]])
+    sumw2 = np.concatenate([[0.0], variances, [0.0]])
+    centers = 0.5 * (edges[:-1] + edges[1:])
+    xaxis = identify.to_TAxis("xaxis", "", len(values), float(edges[0]), float(edges[-1]), fXbins=edges)
+    return identify.to_TH1x(
+        "histogram",
+        "histogram",
+        data,
+        float(np.sum(values)),
+        float(np.sum(values)),
+        float(np.sum(variances)),
+        float(np.sum(values * centers)),
+        float(np.sum(values * centers * centers)),
+        sumw2,
+        xaxis,
+    )
 
 
 def fix_bh(h_in: bh.Histogram, eps=1e-3) -> bh.Histogram:

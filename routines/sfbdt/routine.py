@@ -1,14 +1,27 @@
 import copy
 import json
 import os
+import subprocess
 
 from logger import _logger
+from utils.routine_naming import routine_output_name
 from utils.web_maker import WebMaker
 
 from .mc_reweight_unit import MCReweightUnit
 from .coastline_unit import CoastlineUnit
 from .tmpl_writer_unit import TmplWriterUnit
 from .fit_unit import FitUnit
+
+
+def _current_commit_id():
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
+    except Exception:
+        return "unknown"
 
 
 class SfbdtRoutine:
@@ -28,11 +41,12 @@ class SfbdtRoutine:
         web.write_to_file(webpage, filename='global_cfg.html')
 
     def _write_navigation_webpage(self):
-        job_name = self.global_cfg.routine_name + '_' + str(self.global_cfg.year)
+        job_name = routine_output_name(self.global_cfg)
         webpage = os.path.join('web', job_name)
         web = WebMaker(job_name)
         web.add_h1("Content")
         web.add_text(f"Results written by the `boohft-calib` framework {self.global_cfg.version}.")
+        web.add_text(f"Current commit id is `{_current_commit_id()}`.")
         web.add_text()
         web.add_text(' 1. [MC reweighting](1_mc_reweight/): MC-to-data reweight plots.')
         web.add_text(' 2. [sfBDT coastline](2_coastline/): visualize the sfBDT coastline cut to make good gluon-spliting proxy.')
