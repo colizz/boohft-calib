@@ -1,0 +1,26 @@
+extends:
+  - ../base.yml
+  - ../common/samples_run3late.yml
+  - ../common/custom_selection_run3.yml
+
+routine_name: 20260626_topwsf_w_GloParT3WMass
+category: w
+year: 2025
+nano_version: v15
+
+tagger:
+  label: GloParT3 (w/mass) WvsQCD
+  type: w
+  expr: fj_1_globalParT3_withMassWvsQCD
+  span: [0.0, 1.0]
+  wps:
+    mistag5pct: [0.6543, 1.0]
+    mistag2p5pct: [0.833, 1.0]
+    mistag1pct: [0.9385, 1.0]
+    mistag0p5pct: [0.9702, 1.0]
+    mistag0p1pct: [0.9937, 1.0]
+
+fit_pt_bins:
+  - [200, 300]
+  - [300, 400]
+  - [400, 800]
